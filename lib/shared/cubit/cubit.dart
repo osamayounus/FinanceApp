@@ -18,6 +18,12 @@ class AppCubit extends Cubit<AppStates>{
     Profilepage()
   ];
   int selectedPageIndex = 0;
+
+  // TODO: Move to DB
+  List<Map<String, dynamic>> expenses = [
+    {"name": "My Family", "amount": 100, "state":false},
+    {"name": "I phone", "amount": 44, "state":false},
+  ];
   
   void changeMainPage(int index){
     selectedPageIndex = index;
@@ -48,21 +54,24 @@ class AppCubit extends Cubit<AppStates>{
   }
 
   void addExpense(String name, int amount) {
-    // final updatedList = List<Map<String, dynamic>>.from(state.expenses)
-    //   ..add({"name": name, "amount": amount});
-    // emit(FixedExpensesState(expenses: updatedList));
+    expenses.add({"name": name, "amount": amount, "state":false});
+     emit(FixedExpensesState());
   }
 
   void editExpense(int index, String newName, int newAmount) {
-    // final updatedList = List<Map<String, dynamic>>.from(state.expenses);
-    // updatedList[index] = {"name": newName, "amount": newAmount};
-    // emit(FixedExpensesState(expenses: updatedList));
+    expenses[index]["name"] = newName;
+    expenses[index]["amount"] = newAmount;
+    emit(FixedExpensesState());
   }
 
   void deleteExpense(int index) {
-    // final updatedList = List<Map<String, dynamic>>.from(state.expenses)
-    //   ..removeAt(index);
-    // emit(FixedExpensesState(expenses: updatedList));
+    expenses.removeAt(index);
+    emit(FixedExpensesState());
+  }
+
+  void doneExpense(int index) {
+    expenses[index]["state"] = true;
+    emit(FixedExpensesState());
   }
 
 }

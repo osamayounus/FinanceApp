@@ -91,7 +91,7 @@ class Historypage extends StatelessWidget {
         create: (context) => AppCubit(),
         child: BlocConsumer<AppCubit,AppStates>(
           listener: (BuildContext context, Object? state) {},
-            builder: (context, state) => Scaffold(
+          builder: (context, state) => Scaffold(
               body: Container(
                 color: AppColors.secondary,
                 child: Padding(
