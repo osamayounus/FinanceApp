@@ -19,53 +19,62 @@ class Walletlayoutpage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(navIndexProvider);
-    final double navPaddingHor = MediaQuery.of(context).size.width * 0.10;
-    final double navPaddingVer = MediaQuery.of(context).size.height * 0.03;
-
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: Container(
-        color: AppColors.primary,
+      bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: navPaddingHor,
-            vertical: navPaddingVer,
-          ),
-          child: GNav(
-            gap: 8,
-            padding: const EdgeInsets.all(8),
-            backgroundColor: AppColors.primary,
-            tabBackgroundColor: AppColors.secondary,
-            selectedIndex: selectedIndex,
-            onTabChange: (index) {
-              ref.read(navIndexProvider.notifier).state = index;
-            },
-            color: AppColors.secondary,
-            activeColor: AppColors.primary,
-            textStyle: const TextStyle(
-              fontFamily: 'Rubik',
-              fontWeight: FontWeight.w500,
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            tabs: const [
-              GButton(
-                icon: Icons.attach_money_rounded,
-                text: 'Salary Day',
-                iconSize: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: GNav(
+              gap: 6,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              backgroundColor: Colors.transparent,
+              tabBackgroundColor: AppColors.secondary,
+              selectedIndex: selectedIndex,
+              onTabChange: (index) {
+                ref.read(navIndexProvider.notifier).state = index;
+              },
+              color: AppColors.secondary.withValues(alpha: 0.55),
+              activeColor: AppColors.primary,
+              textStyle: const TextStyle(
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
-              GButton(
-                icon: Icons.wallet_outlined,
-                text: 'Wallet',
-                iconSize: 32,
-              ),
-              GButton(
-                icon: Icons.account_circle_rounded,
-                text: 'Profile',
-                iconSize: 32,
-              ),
-            ],
+              tabs: const [
+                GButton(
+                  icon: Icons.attach_money_rounded,
+                  text: 'Salary',
+                  iconSize: 24,
+                ),
+                GButton(
+                  icon: Icons.wallet_rounded,
+                  text: 'Wallet',
+                  iconSize: 24,
+                ),
+                GButton(
+                  icon: Icons.person_rounded,
+                  text: 'Profile',
+                  iconSize: 24,
+                ),
+              ],
+            ),
           ),
         ),
       ),

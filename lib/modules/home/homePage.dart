@@ -2,6 +2,8 @@ import 'package:card_swiper/card_swiper.dart';
 import 'package:financeapp/modules/home/cards/incomeCard.dart';
 import 'package:financeapp/modules/home/cards/monthlyExpCard.dart';
 import 'package:financeapp/modules/home/cards/savingCard.dart';
+import 'package:financeapp/modules/operation/operationPage.dart';
+import 'package:financeapp/modules/transfer/transferPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
@@ -123,14 +125,22 @@ class Homepage extends ConsumerWidget {
                     width: double.infinity,
                     text: 'Add Income / Expense',
                     textColor: AppColors.primary,
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const OperationPage()),
+                    ),
                   ),
                   const SizedBox(height: AppSizes.s + 4),
                   LightButton(
                     width: double.infinity,
                     text: 'Transfer',
                     textColor: AppColors.primary,
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const TransferPage()),
+                    ),
                   ),
                 ],
               ),

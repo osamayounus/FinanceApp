@@ -1,6 +1,6 @@
 import 'package:financeapp/modules/history/historyPage.dart';
-import 'package:financeapp/shared/components/components.dart';
-import 'package:financeapp/shared/styles/colors.dart';
+import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,80 +9,189 @@ class MonthlyExpCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
+    final expenses = ref.watch(profileProvider).expenses;
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-        color: AppColors.myRed,
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: screenHeight * 0.015,
-          horizontal: screenWidth * 0.04,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSizes.radiusXXL),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFD94040), Color(0xFFAA2525)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        child: Column(
+        child: Stack(
           children: [
-            Row(
-              children: [
-                Text(
-                  'Monthly Expenses',
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.07,
-                    fontFamily: 'Rubik',
-                    color: AppColors.secondary,
-                  ),
-                ),
-              ],
+            // ── Decorative circles ──────────────────────────────────
+            Positioned(
+              top: -28,
+              right: -18,
+              child: _circle(130, 0.12),
             ),
-            SizedBox(height: screenHeight * 0.015),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(
-                  '80',
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.15,
-                    fontFamily: 'Rubik',
-                    color: AppColors.secondary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: screenWidth * 0.015),
-                Text(
-                  'JOD',
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.050,
-                    fontFamily: 'Rubik',
-                    color: AppColors.secondary,
-                  ),
-                ),
-              ],
+            Positioned(
+              top: 18,
+              right: 52,
+              child: _circle(70, 0.08),
             ),
-            SizedBox(height: screenHeight * 0.020),
-            Row(
-              children: [
-                Expanded(
-                  child: LightButton(
-                    width: double.infinity,
-                    text: 'History',
-                    textColor: AppColors.myRed,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => Historypage('Monthly Expenses'),
+            Positioned(
+              bottom: -40,
+              left: -20,
+              child: _circle(110, 0.06),
+            ),
+
+            // ── Content ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSizes.m,
+                vertical: AppSizes.m,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon + title
+                  Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusM),
                         ),
-                      );
-                    },
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          color: Colors.white,
+                          size: AppSizes.iconM,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.s),
+                      const Text(
+                        'Monthly Expenses',
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontS,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+
+                  const Spacer(),
+
+                  // Balance label
+                  Text(
+                    'Total',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontXS,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+
+                  // Amount
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        '$expenses',
+                        style: const TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 38,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.s),
+                      Text(
+                        'JOD',
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontM,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(),
+
+                  // Button
+                  _CardButton(
+                    label: 'History',
+                    icon: Icons.history_rounded,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => Historypage('Monthly Expenses')),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _circle(double size, double opacity) => Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: opacity),
+      ),
+    );
+
+class _CardButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CardButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                vertical: AppSizes.s + 2, horizontal: AppSizes.s),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: Colors.white, size: AppSizes.iconS),
+                const SizedBox(width: AppSizes.xs + 2),
+                const Text(
+                  'History',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
