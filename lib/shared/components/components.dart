@@ -2,6 +2,72 @@ import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
 
+// ── App Toast ─────────────────────────────────────────────────────────────────
+
+class AppToast {
+  static void success(ScaffoldMessengerState messenger, String message) =>
+      _show(messenger, message, isSuccess: true);
+
+  static void error(ScaffoldMessengerState messenger, String message) =>
+      _show(messenger, message, isSuccess: false);
+
+  static void _show(
+    ScaffoldMessengerState messenger,
+    String message, {
+    required bool isSuccess,
+  }) {
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: (isSuccess ? AppColors.myGreen : AppColors.myRed)
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isSuccess
+                      ? Icons.check_rounded
+                      : Icons.error_outline_rounded,
+                  color: isSuccess ? AppColors.myGreen : AppColors.myRed,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Rubik',
+                    fontWeight: FontWeight.w600,
+                    fontSize: AppSizes.fontS,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.white,
+          behavior: SnackBarBehavior.floating,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusL),
+            side: BorderSide(
+              color: (isSuccess ? AppColors.myGreen : AppColors.myRed)
+                  .withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+  }
+}
+
 class LightButton extends StatelessWidget {
   final double width;
   final String text;
@@ -86,6 +152,7 @@ class TransactionCard extends StatelessWidget {
   final String type;
   final double amount;
   final String description;
+  final String? subtitle;
   final DateTime dateTime;
 
   const TransactionCard({
@@ -93,6 +160,7 @@ class TransactionCard extends StatelessWidget {
     required this.type,
     required this.amount,
     required this.description,
+    this.subtitle,
     required this.dateTime,
   });
 
@@ -144,6 +212,18 @@ class TransactionCard extends StatelessWidget {
                     color: AppColors.primary,
                   ),
                 ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontXS,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blueAccent.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 3),
                 Text(
                   '${_formatDate(dateTime)}  ·  ${_formatTime(dateTime)}',

@@ -10,13 +10,14 @@ class Profilepage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(profileProvider);
+    final user = ref.watch(userProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.m, vertical: AppSizes.m),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -38,10 +39,12 @@ class Profilepage extends ConsumerWidget {
               // ── Avatar card ─────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: AppSizes.xl),
+                padding:
+                    const EdgeInsets.symmetric(vertical: AppSizes.xl),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusXL),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -52,21 +55,22 @@ class Profilepage extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    // Avatar
                     Container(
                       width: 80,
                       height: 80,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [AppColors.primary, const Color(0xFF1A1D4A)],
+                          colors: [AppColors.primary, Color(0xFF1A1D4A)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                       ),
                       child: Center(
                         child: Text(
-                          profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                          user.name.isNotEmpty
+                              ? user.name[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(
                             fontSize: 34,
                             fontFamily: 'Rubik',
@@ -78,7 +82,7 @@ class Profilepage extends ConsumerWidget {
                     ),
                     const SizedBox(height: AppSizes.m),
                     Text(
-                      profile.name,
+                      user.name,
                       style: const TextStyle(
                         fontSize: AppSizes.fontXXL,
                         fontFamily: 'Rubik',
@@ -102,7 +106,8 @@ class Profilepage extends ConsumerWidget {
 
               // ── Section label ────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.only(left: AppSizes.xs, bottom: AppSizes.s),
+                padding: const EdgeInsets.only(
+                    left: AppSizes.xs, bottom: AppSizes.s),
                 child: Text(
                   'PERSONAL INFO',
                   style: TextStyle(
@@ -119,7 +124,8 @@ class Profilepage extends ConsumerWidget {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusXL),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -135,15 +141,17 @@ class Profilepage extends ConsumerWidget {
                       iconColor: const Color(0xFF5B6BF8),
                       iconBg: const Color(0xFFEEF0FF),
                       label: 'Name',
-                      value: profile.name,
+                      value: user.name,
                       isFirst: true,
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
                         title: 'Edit Name',
-                        initialValue: profile.name,
+                        initialValue: user.name,
                         isNumber: false,
-                        onSave: (val) => ref.read(profileProvider.notifier).update(name: val),
+                        onSave: (val) => ref
+                            .read(userProvider.notifier)
+                            .update(name: val),
                       ),
                     ),
                     _divider(),
@@ -151,16 +159,18 @@ class Profilepage extends ConsumerWidget {
                       icon: Icons.account_balance_wallet_rounded,
                       iconColor: AppColors.myGreen,
                       iconBg: AppColors.myGreen.withValues(alpha: 0.1),
-                      label: 'Monthly Income',
-                      value: '${profile.income} JOD',
+                      label: 'Monthly Salary',
+                      value: '${user.salary.toInt()} JOD',
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
-                        title: 'Edit Income',
-                        initialValue: profile.income.toString(),
+                        title: 'Edit Salary',
+                        initialValue: user.salary.toInt().toString(),
                         isNumber: true,
                         suffix: 'JOD',
-                        onSave: (val) => ref.read(profileProvider.notifier).update(income: int.tryParse(val)),
+                        onSave: (val) => ref
+                            .read(userProvider.notifier)
+                            .update(salary: double.tryParse(val)),
                       ),
                     ),
                     _divider(),
@@ -168,52 +178,23 @@ class Profilepage extends ConsumerWidget {
                       icon: Icons.receipt_long_rounded,
                       iconColor: AppColors.myRed,
                       iconBg: AppColors.myRed.withValues(alpha: 0.1),
-                      label: 'Monthly Expenses',
-                      value: '${profile.expenses} JOD',
+                      label: 'Monthly Budget',
+                      value: '${user.monthlyBudget.toInt()} JOD',
                       isLast: true,
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
-                        title: 'Edit Expenses',
-                        initialValue: profile.expenses.toString(),
+                        title: 'Edit Monthly Budget',
+                        initialValue: user.monthlyBudget.toInt().toString(),
                         isNumber: true,
                         suffix: 'JOD',
-                        onSave: (val) => ref.read(profileProvider.notifier).update(expenses: int.tryParse(val)),
+                        onSave: (val) => ref
+                            .read(userProvider.notifier)
+                            .update(
+                                monthlyBudget: double.tryParse(val)),
                       ),
                     ),
                   ],
-                ),
-              ),
-              const SizedBox(height: AppSizes.xl),
-
-              // ── Reset button ─────────────────────────────────────
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: _InfoRow(
-                  icon: Icons.restart_alt_rounded,
-                  iconColor: AppColors.myRed,
-                  iconBg: AppColors.myRed.withValues(alpha: 0.1),
-                  label: 'Reset to Defaults',
-                  value: '',
-                  isFirst: true,
-                  isLast: true,
-                  labelStyle: const TextStyle(
-                    fontSize: AppSizes.fontM,
-                    fontFamily: 'Rubik',
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.myRed,
-                  ),
-                  onTap: () => _confirmReset(context, ref),
                 ),
               ),
             ],
@@ -225,7 +206,8 @@ class Profilepage extends ConsumerWidget {
 
   Widget _divider() => Padding(
         padding: const EdgeInsets.only(left: 72),
-        child: Divider(height: 1, thickness: 1, color: Colors.grey[100]),
+        child:
+            Divider(height: 1, thickness: 1, color: Colors.grey[100]),
       );
 
   void _showEditSheet({
@@ -244,18 +226,20 @@ class Profilepage extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.xxl - 8)),
+            borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppSizes.xxl - 8)),
           ),
-          padding: const EdgeInsets.fromLTRB(AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+          padding: const EdgeInsets.fromLTRB(
+              AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle
               Center(
                 child: Container(
                   width: 40,
@@ -277,17 +261,21 @@ class Profilepage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSizes.l),
-              // Input field
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF2F3F7),
-                  borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusL),
                 ),
                 child: TextField(
                   controller: ctrl,
                   autofocus: true,
-                  keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-                  inputFormatters: isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
+                  keyboardType: isNumber
+                      ? TextInputType.number
+                      : TextInputType.text,
+                  inputFormatters: isNumber
+                      ? [FilteringTextInputFormatter.digitsOnly]
+                      : null,
                   style: const TextStyle(
                     fontSize: AppSizes.fontXL,
                     fontFamily: 'Rubik',
@@ -310,7 +298,6 @@ class Profilepage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSizes.l),
-              // Buttons
               Row(
                 children: [
                   Expanded(
@@ -319,9 +306,11 @@ class Profilepage extends ConsumerWidget {
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: Colors.grey[200]!),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: AppSizes.m),
                       ),
                       child: Text(
                         'Cancel',
@@ -347,9 +336,11 @@ class Profilepage extends ConsumerWidget {
                         backgroundColor: AppColors.primary,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: AppSizes.m),
                       ),
                       child: const Text(
                         'Save',
@@ -370,38 +361,6 @@ class Profilepage extends ConsumerWidget {
       ),
     );
   }
-
-  void _confirmReset(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
-        title: const Text(
-          'Reset Profile',
-          style: TextStyle(fontFamily: 'Rubik', fontWeight: FontWeight.bold),
-        ),
-        content: const Text('Reset all info to default values?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(profileProvider.notifier).reset();
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.myRed,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusS)),
-            ),
-            child: const Text('Reset', style: TextStyle(color: Colors.white, fontFamily: 'Rubik')),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Info Row Widget ───────────────────────────────────────────────────────────
@@ -415,7 +374,6 @@ class _InfoRow extends StatelessWidget {
   final VoidCallback onTap;
   final bool isFirst;
   final bool isLast;
-  final TextStyle? labelStyle;
 
   const _InfoRow({
     required this.icon,
@@ -426,7 +384,6 @@ class _InfoRow extends StatelessWidget {
     required this.onTap,
     this.isFirst = false,
     this.isLast = false,
-    this.labelStyle,
   });
 
   @override
@@ -436,54 +393,57 @@ class _InfoRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.vertical(
-          top: isFirst ? const Radius.circular(AppSizes.radiusXL) : Radius.zero,
-          bottom: isLast ? const Radius.circular(AppSizes.radiusXL) : Radius.zero,
+          top: isFirst
+              ? const Radius.circular(AppSizes.radiusXL)
+              : Radius.zero,
+          bottom: isLast
+              ? const Radius.circular(AppSizes.radiusXL)
+              : Radius.zero,
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.m, vertical: AppSizes.m),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
           child: Row(
             children: [
-              // Icon container
               Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusM),
                 ),
-                child: Icon(icon, color: iconColor, size: AppSizes.iconM),
+                child:
+                    Icon(icon, color: iconColor, size: AppSizes.iconM),
               ),
               const SizedBox(width: AppSizes.m),
-              // Label + value
               Expanded(
-                child: value.isEmpty
-                    ? Text(label, style: labelStyle)
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: AppSizes.fontXS,
-                              fontFamily: 'Rubik',
-                              color: Colors.grey[400],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            value,
-                            style: const TextStyle(
-                              fontSize: AppSizes.fontM,
-                              fontFamily: 'Rubik',
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: AppSizes.fontXS,
+                        fontFamily: 'Rubik',
+                        color: Colors.grey[400],
                       ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: AppSizes.fontM,
+                        fontFamily: 'Rubik',
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              // Chevron
-              Icon(Icons.chevron_right_rounded, color: Colors.grey[300], size: 22),
+              Icon(Icons.chevron_right_rounded,
+                  color: Colors.grey[300], size: 22),
             ],
           ),
         ),

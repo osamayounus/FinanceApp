@@ -1,3 +1,4 @@
+import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
@@ -9,7 +10,10 @@ class MonthlyExpCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final expenses = ref.watch(profileProvider).expenses;
+    final balance = ref
+        .watch(accountsProvider)
+        .firstWhere((a) => a.id == kBudgetId)
+        .balance;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXXL),
@@ -23,24 +27,10 @@ class MonthlyExpCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            // ── Decorative circles ──────────────────────────────────
-            Positioned(
-              top: -28,
-              right: -18,
-              child: _circle(130, 0.12),
-            ),
-            Positioned(
-              top: 18,
-              right: 52,
-              child: _circle(70, 0.08),
-            ),
-            Positioned(
-              bottom: -40,
-              left: -20,
-              child: _circle(110, 0.06),
-            ),
+            Positioned(top: -28, right: -18, child: _circle(130, 0.12)),
+            Positioned(top: 18, right: 52, child: _circle(70, 0.08)),
+            Positioned(bottom: -40, left: -20, child: _circle(110, 0.06)),
 
-            // ── Content ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.m,
@@ -49,7 +39,6 @@ class MonthlyExpCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon + title
                   Row(
                     children: [
                       Container(
@@ -68,7 +57,7 @@ class MonthlyExpCard extends ConsumerWidget {
                       ),
                       const SizedBox(width: AppSizes.s),
                       const Text(
-                        'Monthly Expenses',
+                        'Monthly Budget',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontS,
@@ -81,9 +70,8 @@ class MonthlyExpCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Balance label
                   Text(
-                    'Total',
+                    'Remaining',
                     style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: AppSizes.fontXS,
@@ -93,13 +81,14 @@ class MonthlyExpCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
 
-                  // Amount
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '$expenses',
+                        balance % 1 == 0
+                            ? '${balance.toInt()}'
+                            : balance.toStringAsFixed(2),
                         style: const TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: 38,
@@ -122,14 +111,17 @@ class MonthlyExpCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Button
                   _CardButton(
                     label: 'History',
                     icon: Icons.history_rounded,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => Historypage('Monthly Expenses')),
+                        builder: (_) => const Historypage(
+                          accountId: kBudgetId,
+                          accountName: 'Monthly Budget',
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -180,9 +172,9 @@ class _CardButton extends StatelessWidget {
               children: [
                 Icon(icon, color: Colors.white, size: AppSizes.iconS),
                 const SizedBox(width: AppSizes.xs + 2),
-                const Text(
-                  'History',
-                  style: TextStyle(
+                Text(
+                  label,
+                  style: const TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontS,
                     fontWeight: FontWeight.w600,

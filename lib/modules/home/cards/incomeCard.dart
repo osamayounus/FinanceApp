@@ -1,3 +1,4 @@
+import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/fixedExp/FixedExpensesPage.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
@@ -11,7 +12,10 @@ class IncomeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final income = ref.watch(profileProvider).income;
+    final balance = ref
+        .watch(accountsProvider)
+        .firstWhere((a) => a.id == kWalletId)
+        .balance;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXXL),
@@ -32,24 +36,10 @@ class IncomeCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            // ── Decorative circles ──────────────────────────────────
-            Positioned(
-              top: -28,
-              right: -18,
-              child: _circle(130, 0.18),
-            ),
-            Positioned(
-              top: 18,
-              right: 52,
-              child: _circle(70, 0.12),
-            ),
-            Positioned(
-              bottom: -40,
-              left: -20,
-              child: _circle(110, 0.10),
-            ),
+            Positioned(top: -28, right: -18, child: _circle(130, 0.18)),
+            Positioned(top: 18, right: 52, child: _circle(70, 0.12)),
+            Positioned(bottom: -40, left: -20, child: _circle(110, 0.10)),
 
-            // ── Content ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.m,
@@ -58,7 +48,6 @@ class IncomeCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon + title
                   Row(
                     children: [
                       Container(
@@ -77,7 +66,7 @@ class IncomeCard extends ConsumerWidget {
                       ),
                       const SizedBox(width: AppSizes.s),
                       Text(
-                        'Income Account',
+                        'Wallet',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontS,
@@ -90,7 +79,6 @@ class IncomeCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Balance label
                   Text(
                     'Balance',
                     style: TextStyle(
@@ -102,13 +90,14 @@ class IncomeCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
 
-                  // Amount
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '$income',
+                        balance % 1 == 0
+                            ? '${balance.toInt()}'
+                            : balance.toStringAsFixed(2),
                         style: const TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: 38,
@@ -131,7 +120,6 @@ class IncomeCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Buttons
                   Row(
                     children: [
                       Expanded(
@@ -141,7 +129,11 @@ class IncomeCard extends ConsumerWidget {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => Historypage('Income')),
+                              builder: (_) => const Historypage(
+                                accountId: kWalletId,
+                                accountName: 'Wallet',
+                              ),
+                            ),
                           ),
                         ),
                       ),

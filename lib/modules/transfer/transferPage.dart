@@ -1,102 +1,159 @@
+import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
-class _Account {
+class _Acc {
+  final int id;
   final String name;
   final IconData icon;
-  const _Account(this.name, this.icon);
+  const _Acc(this.id, this.name, this.icon);
 }
-
-const List<_Account> _kAccounts = [
-  _Account('Income Account', Icons.account_balance_wallet_rounded),
-  _Account('Saving Account', Icons.savings_rounded),
-  _Account('Monthly Expenses', Icons.receipt_long_rounded),
-];
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-class TransferPage extends StatefulWidget {
+class TransferPage extends ConsumerStatefulWidget {
   const TransferPage({super.key});
 
   @override
-  State<TransferPage> createState() => _TransferPageState();
+  ConsumerState<TransferPage> createState() => _TransferPageState();
 }
 
-class _TransferPageState extends State<TransferPage> {
-  String _from = _kAccounts[0].name;
-  String _to = _kAccounts[1].name;
+class _TransferPageState extends ConsumerState<TransferPage> {
+  late int _fromId;
+  late int _toId;
 
   final _amountCtrl = TextEditingController();
+  final _titleCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fromId = kWalletId;
+    _toId = kSavingsId;
+  }
 
   @override
   void dispose() {
     _amountCtrl.dispose();
+    _titleCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
-  // ── Account picker sheet ──────────────────────────────────────────────────
+  List<_Acc> get _accounts => const [
+        _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
+        _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
+        _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
+      ];
+
+  _Acc get _from => _accounts.firstWhere((a) => a.id == _fromId);
+  _Acc get _to => _accounts.firstWhere((a) => a.id == _toId);
 
   Future<void> _pickAccount({required bool isFrom}) async {
-    final current = isFrom ? _from : _to;
-    final picked = await showModalBottomSheet<String>(
+    final currentId = isFrom ? _fromId : _toId;
+    final picked = await showModalBottomSheet<int>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AccountPickerSheet(
         title: isFrom ? 'Transfer From' : 'Transfer To',
-        current: current,
+        currentId: currentId,
+        accounts: _accounts,
       ),
     );
-    if (picked == null || picked == current) return;
+    if (picked == null || picked == currentId) return;
     setState(() {
       if (isFrom) {
-        _from = picked;
-        if (_to == picked) _to = _kAccounts.firstWhere((a) => a.name != picked).name;
+        _fromId = picked;
+        if (_toId == picked) {
+          _toId = _accounts.firstWhere((a) => a.id != picked).id;
+        }
       } else {
-        _to = picked;
-        if (_from == picked) _from = _kAccounts.firstWhere((a) => a.name != picked).name;
+        _toId = picked;
+        if (_fromId == picked) {
+          _fromId = _accounts.firstWhere((a) => a.id != picked).id;
+        }
       }
     });
   }
 
-  // ── Swap ──────────────────────────────────────────────────────────────────
-
   void _swap() => setState(() {
-        final tmp = _from;
-        _from = _to;
-        _to = tmp;
+        final tmp = _fromId;
+        _fromId = _toId;
+        _toId = tmp;
       });
 
-  // ── Confirm ───────────────────────────────────────────────────────────────
-
-  void _confirm() {
+  Future<void> _confirm() async {
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    final messenger = ScaffoldMessenger.of(context);
+
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Enter a valid amount',
-              style: TextStyle(fontFamily: 'Rubik')),
-          backgroundColor: AppColors.myRed,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusM)),
-        ),
-      );
+      AppToast.error(messenger, 'Enter a valid amount');
       return;
     }
-    // TODO: wire to state management
+
+    final title = _titleCtrl.text.trim().isNotEmpty
+        ? _titleCtrl.text.trim()
+        : 'Transfer';
+    final note = _noteCtrl.text.trim();
+    final now = DateTime.now();
+    final amountStr = amount % 1 == 0
+        ? amount.toInt().toString()
+        : amount.toStringAsFixed(2);
+
+    final txOut = TransactionModel(
+      id: 0,
+      accountId: _fromId,
+      type: 'transfer_out',
+      amount: amount,
+      title: title,
+      note: note,
+      relatedAccountId: _toId,
+      createdAt: now,
+    );
+    final txIn = TransactionModel(
+      id: 0,
+      accountId: _toId,
+      type: 'transfer_in',
+      amount: amount,
+      title: title,
+      note: note,
+      relatedAccountId: _fromId,
+      createdAt: now,
+    );
+
+    final success = await ref.read(accountsProvider.notifier).transfer(
+          fromId: _fromId,
+          toId: _toId,
+          amount: amount,
+          txOut: txOut,
+          txIn: txIn,
+        );
+
+    if (!mounted) return;
+    if (!success) {
+      AppToast.error(messenger, 'Insufficient balance in ${_from.name}');
+      return;
+    }
+
+    AppToast.success(
+        messenger, '$amountStr JOD transferred to ${_to.name}');
     Navigator.pop(context);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final fromAcc = _kAccounts.firstWhere((a) => a.name == _from);
-    final toAcc = _kAccounts.firstWhere((a) => a.name == _to);
+    final accounts = ref.watch(accountsProvider);
+    final fromBalance =
+        accounts.firstWhere((a) => a.id == _fromId).balance;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
@@ -119,13 +176,13 @@ class _TransferPageState extends State<TransferPage> {
           ),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
             AppSizes.m, AppSizes.s, AppSizes.m, AppSizes.l),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── From / To card ──────────────────────────────────────
+            // ── From / To card ─────────────────────────────────────
             _SectionLabel('Accounts'),
             const SizedBox(height: AppSizes.s),
             _card(
@@ -133,10 +190,9 @@ class _TransferPageState extends State<TransferPage> {
                 children: [
                   _AccountRow(
                     label: 'From',
-                    account: fromAcc,
+                    account: _from,
                     onTap: () => _pickAccount(isFrom: true),
                   ),
-                  // Divider + swap button
                   Stack(
                     alignment: Alignment.center,
                     children: [
@@ -167,7 +223,7 @@ class _TransferPageState extends State<TransferPage> {
                   ),
                   _AccountRow(
                     label: 'To',
-                    account: toAcc,
+                    account: _to,
                     onTap: () => _pickAccount(isFrom: false),
                   ),
                 ],
@@ -192,7 +248,6 @@ class _TransferPageState extends State<TransferPage> {
                         Expanded(
                           child: TextField(
                             controller: _amountCtrl,
-                            autofocus: false,
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
                             inputFormatters: [
@@ -225,7 +280,8 @@ class _TransferPageState extends State<TransferPage> {
                               horizontal: AppSizes.s + 2,
                               vertical: AppSizes.xs + 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.06),
+                            color:
+                                AppColors.primary.withValues(alpha: 0.06),
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusS),
                           ),
@@ -241,19 +297,29 @@ class _TransferPageState extends State<TransferPage> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: AppSizes.s),
+                    Text(
+                      'Available: ${fromBalance % 1 == 0 ? fromBalance.toInt() : fromBalance.toStringAsFixed(2)} JOD',
+                      style: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: AppSizes.fontXS,
+                        color: Colors.grey[400],
+                      ),
+                    ),
                     const SizedBox(height: AppSizes.m),
-                    // Quick amount chips
                     Wrap(
                       spacing: AppSizes.s,
                       children: [5, 10, 20, 50, 100].map((v) {
                         return GestureDetector(
-                          onTap: () =>
-                              setState(() => _amountCtrl.text = v.toString()),
+                          onTap: () => setState(
+                              () => _amountCtrl.text = v.toString()),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: AppSizes.m, vertical: AppSizes.s),
+                                horizontal: AppSizes.m,
+                                vertical: AppSizes.s),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.06),
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.06),
                               borderRadius:
                                   BorderRadius.circular(AppSizes.radiusM),
                             ),
@@ -275,7 +341,36 @@ class _TransferPageState extends State<TransferPage> {
               ),
             ),
 
-            const Spacer(),
+            const SizedBox(height: AppSizes.m),
+
+            // ── Details card ────────────────────────────────────────
+            _SectionLabel('Details'),
+            const SizedBox(height: AppSizes.s),
+            _card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSizes.m, vertical: AppSizes.s),
+                child: Column(
+                  children: [
+                    _DetailField(
+                      controller: _titleCtrl,
+                      label: 'Title (optional)',
+                      hint: 'e.g. Moving to savings',
+                      icon: Icons.label_outline_rounded,
+                    ),
+                    const SizedBox(height: AppSizes.s),
+                    _DetailField(
+                      controller: _noteCtrl,
+                      label: 'Note (optional)',
+                      hint: 'Additional details...',
+                      icon: Icons.notes_rounded,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: AppSizes.m),
 
             // ── Summary hint ────────────────────────────────────────
             Center(
@@ -286,7 +381,7 @@ class _TransferPageState extends State<TransferPage> {
                       fontSize: AppSizes.fontXS,
                       color: Colors.grey[400]),
                   children: [
-                    TextSpan(text: _from),
+                    TextSpan(text: _from.name),
                     const WidgetSpan(
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
@@ -294,7 +389,7 @@ class _TransferPageState extends State<TransferPage> {
                             size: 12, color: Colors.grey),
                       ),
                     ),
-                    TextSpan(text: _to),
+                    TextSpan(text: _to.name),
                   ],
                 ),
               ),
@@ -369,7 +464,7 @@ class _SectionLabel extends StatelessWidget {
 
 class _AccountRow extends StatelessWidget {
   final String label;
-  final _Account account;
+  final _Acc account;
   final VoidCallback onTap;
 
   const _AccountRow({
@@ -395,7 +490,8 @@ class _AccountRow extends StatelessWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(AppSizes.radiusM),
               ),
-              child: Icon(account.icon, color: Colors.white, size: AppSizes.iconM),
+              child: Icon(account.icon,
+                  color: Colors.white, size: AppSizes.iconM),
             ),
             const SizedBox(width: AppSizes.m),
             Expanded(
@@ -432,13 +528,63 @@ class _AccountRow extends StatelessWidget {
   }
 }
 
+class _DetailField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+
+  const _DetailField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F7),
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+      ),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(
+          fontFamily: 'Rubik',
+          fontSize: AppSizes.fontM,
+          color: AppColors.primary,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon:
+              Icon(icon, color: Colors.grey[400], size: AppSizes.iconM),
+          labelStyle:
+              TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+          hintStyle:
+              TextStyle(fontFamily: 'Rubik', color: Colors.grey[300]),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Account picker bottom sheet ───────────────────────────────────────────────
 
 class _AccountPickerSheet extends StatelessWidget {
   final String title;
-  final String current;
+  final int currentId;
+  final List<_Acc> accounts;
 
-  const _AccountPickerSheet({required this.title, required this.current});
+  const _AccountPickerSheet({
+    required this.title,
+    required this.currentId,
+    required this.accounts,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -472,8 +618,8 @@ class _AccountPickerSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSizes.s),
-          ..._kAccounts.map((acc) {
-            final selected = acc.name == current;
+          ...accounts.map((acc) {
+            final selected = acc.id == currentId;
             return ListTile(
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppSizes.l, vertical: AppSizes.xs),
@@ -504,7 +650,7 @@ class _AccountPickerSheet extends StatelessWidget {
                   ? const Icon(Icons.check_circle_rounded,
                       color: AppColors.myGreen, size: AppSizes.iconM)
                   : null,
-              onTap: () => Navigator.pop(context, acc.name),
+              onTap: () => Navigator.pop(context, acc.id),
             );
           }),
           const SizedBox(height: AppSizes.l),

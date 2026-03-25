@@ -1,16 +1,20 @@
+import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
 
-class Salarydaypage extends StatefulWidget {
+class Salarydaypage extends ConsumerStatefulWidget {
   const Salarydaypage({super.key});
 
   @override
-  State<Salarydaypage> createState() => _SalarydaypageState();
+  ConsumerState<Salarydaypage> createState() => _SalarydaypageState();
 }
 
-class _SalarydaypageState extends State<Salarydaypage>
+class _SalarydaypageState extends ConsumerState<Salarydaypage>
     with TickerProviderStateMixin {
   // Press animation
   late final AnimationController _pressCtrl;
@@ -23,11 +27,14 @@ class _SalarydaypageState extends State<Salarydaypage>
   late final Animation<double> _ring2Scale;
   late final Animation<double> _ring2Opacity;
 
+  final _coinKey = GlobalKey();
+  OverlayEntry? _tutorialEntry;
+  bool _tutorialTriggered = false;
+
   @override
   void initState() {
     super.initState();
 
-    // ── Press ────────────────────────────────────────────────────
     _pressCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 110),
@@ -41,13 +48,13 @@ class _SalarydaypageState extends State<Salarydaypage>
       ),
     );
 
-    // ── Pulse rings (staggered, looping 2.4 s) ───────────────────
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )..repeat();
 
-    // Ring 1 starts early (0% → 70%)
+    // Tutorial is triggered from build() when this page becomes visible.
+
     final curve1 = CurvedAnimation(
       parent: _pulseCtrl,
       curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
@@ -55,7 +62,6 @@ class _SalarydaypageState extends State<Salarydaypage>
     _ring1Scale = Tween<double>(begin: 1.0, end: 1.55).animate(curve1);
     _ring1Opacity = Tween<double>(begin: 0.45, end: 0.0).animate(curve1);
 
-    // Ring 2 starts later (30% → 100%)
     final curve2 = CurvedAnimation(
       parent: _pulseCtrl,
       curve: const Interval(0.30, 1.0, curve: Curves.easeOut),
@@ -66,9 +72,40 @@ class _SalarydaypageState extends State<Salarydaypage>
 
   @override
   void dispose() {
+    _tutorialEntry?.remove();
     _pressCtrl.dispose();
     _pulseCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _maybeShowTutorial() async {
+    final db = ref.read(dbProvider);
+    final seen = await db.hasTutorialSeen('tutorial_salary');
+    if (seen || !mounted) return;
+    await db.markTutorialSeen('tutorial_salary');
+    if (!mounted) return;
+    _tutorialEntry = OverlayEntry(
+      builder: (_) => TutorialOverlay(
+        steps: [
+          TutorialStep(
+            targetKey: _coinKey,
+            title: 'Salary Day',
+            body: 'Press this coin ONLY when your salary has actually arrived in your account.',
+            position: TipPosition.above,
+            padding: 20,
+          ),
+          const TutorialStep(
+            title: 'What happens when you press it?',
+            body: '• Budget leftover → transferred to Wallet\n• Wallet receives your net salary\n• Budget resets to its monthly amount\n• All bills reset to unpaid',
+          ),
+        ],
+        onDone: () {
+          _tutorialEntry?.remove();
+          _tutorialEntry = null;
+        },
+      ),
+    );
+    Overlay.of(context).insert(_tutorialEntry!);
   }
 
   void _onTapDown(_) => _pressCtrl.forward();
@@ -77,6 +114,7 @@ class _SalarydaypageState extends State<Salarydaypage>
   void _onTap() => _showConfirmDialog();
 
   void _showConfirmDialog() {
+    final user = ref.read(userProvider);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -88,7 +126,6 @@ class _SalarydaypageState extends State<Salarydaypage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon
             Container(
               padding: const EdgeInsets.all(AppSizes.m),
               decoration: BoxDecoration(
@@ -109,7 +146,7 @@ class _SalarydaypageState extends State<Salarydaypage>
             ),
             const SizedBox(height: AppSizes.s),
             Text(
-              'Are you 100% sure the salary arrived?\nThis will update your balance.',
+              'Salary: ${user.salary.toInt()} JOD\nBudget: ${user.monthlyBudget.toInt()} JOD\n\nThis will update your balances and reset all bills.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Rubik',
@@ -127,9 +164,11 @@ class _SalarydaypageState extends State<Salarydaypage>
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.grey[200]!),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusL),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: AppSizes.m),
                     ),
                     child: Text(
                       'Nope 😅',
@@ -144,14 +183,19 @@ class _SalarydaypageState extends State<Salarydaypage>
                 const SizedBox(width: AppSizes.s + 4),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _processSalaryDay();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.myGreen,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusL),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: AppSizes.m),
                     ),
                     child: const Text(
                       'YES! 🎉',
@@ -171,8 +215,31 @@ class _SalarydaypageState extends State<Salarydaypage>
     );
   }
 
+  Future<void> _processSalaryDay() async {
+    final user = ref.read(userProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    await ref
+        .read(accountsProvider.notifier)
+        .processSalaryDay(user.salary, user.monthlyBudget);
+    ref.read(expensesProvider.notifier).resetAll();
+
+    if (!mounted) return;
+    AppToast.success(
+      messenger,
+      'Salary day done! + ${user.salary.toInt()} JOD received 🎉',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Show tutorial only when this page is actually visible (nav index 0).
+    ref.listen<int>(navIndexProvider, (_, next) {
+      if (next == 0 && !_tutorialTriggered) {
+        _tutorialTriggered = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowTutorial());
+      }
+    });
+
     final double screenWidth = MediaQuery.of(context).size.width;
     final double coinSize = screenWidth * 0.62;
 
@@ -185,7 +252,7 @@ class _SalarydaypageState extends State<Salarydaypage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ── Rule card ─────────────────────────────────────────
+                // ── Rule card ───────────────────────────────────────
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSizes.m),
@@ -194,7 +261,8 @@ class _SalarydaypageState extends State<Salarydaypage>
                       color: AppColors.myGreen.withValues(alpha: 0.4),
                       width: 1.5,
                     ),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                    borderRadius:
+                        BorderRadius.circular(AppSizes.radiusM),
                     color: AppColors.myGreen.withValues(alpha: 0.07),
                   ),
                   child: Column(
@@ -244,7 +312,8 @@ class _SalarydaypageState extends State<Salarydaypage>
                           Container(
                             padding: const EdgeInsets.all(3),
                             decoration: BoxDecoration(
-                              color: AppColors.myGreen.withValues(alpha: 0.15),
+                              color:
+                                  AppColors.myGreen.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -260,8 +329,9 @@ class _SalarydaypageState extends State<Salarydaypage>
                 ),
                 const SizedBox(height: AppSizes.xxl),
 
-                // ── Coin with pulse rings ─────────────────────────────
+                // ── Coin with pulse rings ─────────────────────────
                 GestureDetector(
+                  key: _coinKey,
                   onTapDown: _onTapDown,
                   onTapUp: _onTapUp,
                   onTapCancel: _onTapCancel,
@@ -275,7 +345,6 @@ class _SalarydaypageState extends State<Salarydaypage>
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Ring 1
                             Opacity(
                               opacity: _ring1Opacity.value,
                               child: Container(
@@ -290,7 +359,6 @@ class _SalarydaypageState extends State<Salarydaypage>
                                 ),
                               ),
                             ),
-                            // Ring 2
                             Opacity(
                               opacity: _ring2Opacity.value,
                               child: Container(
@@ -305,7 +373,6 @@ class _SalarydaypageState extends State<Salarydaypage>
                                 ),
                               ),
                             ),
-                            // Static coin container
                             child!,
                           ],
                         ),
@@ -317,12 +384,14 @@ class _SalarydaypageState extends State<Salarydaypage>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: AppColors.myGreen.withValues(alpha: 0.25),
+                          color:
+                              AppColors.myGreen.withValues(alpha: 0.25),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.myGreen.withValues(alpha: 0.1),
+                            color:
+                                AppColors.myGreen.withValues(alpha: 0.1),
                             blurRadius: 30,
                             spreadRadius: 4,
                           ),
@@ -343,7 +412,6 @@ class _SalarydaypageState extends State<Salarydaypage>
                 ),
                 const SizedBox(height: AppSizes.xxl),
 
-                // ── Subtitle ──────────────────────────────────────────
                 Text(
                   'Your balance will be updated automatically',
                   textAlign: TextAlign.center,

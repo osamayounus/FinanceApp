@@ -1,28 +1,70 @@
+import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Historypage extends StatelessWidget {
-  final String pageName;
+class Historypage extends ConsumerStatefulWidget {
+  final int accountId;
+  final String accountName;
 
-  const Historypage(this.pageName, {super.key});
+  const Historypage({
+    super.key,
+    required this.accountId,
+    required this.accountName,
+  });
 
-  // ── Data: type + amount + description + dateTime in one place ────────────
-  static final List<Map<String, dynamic>> _transactions = [
-    {'type': 'Withdraw',  'amount': 5.0,   'description': 'I bought a Book',       'dateTime': DateTime(2025, 5, 27, 17, 30)},
-    {'type': 'Deposit',   'amount': 20.0,  'description': 'Sold Old Laptop',        'dateTime': DateTime(2025, 5, 26, 10, 15)},
-    {'type': 'Transfer',  'amount': 10.0,  'description': 'To Saving Account',      'dateTime': DateTime(2025, 5, 25, 15, 45)},
-    {'type': 'Withdraw',  'amount': 7.5,   'description': 'Dinner at Restaurant',   'dateTime': DateTime(2025, 5, 24, 20,  0)},
-    {'type': 'Deposit',   'amount': 100.0, 'description': 'Salary Payment',         'dateTime': DateTime(2025, 5, 24,  9,  0)},
-    {'type': 'Withdraw',  'amount': 15.0,  'description': 'Bought Groceries',       'dateTime': DateTime(2025, 5, 23, 18, 30)},
-    {'type': 'Deposit',   'amount': 30.0,  'description': 'Returned Item Refund',   'dateTime': DateTime(2025, 5, 22, 12, 45)},
-    {'type': 'Transfer',  'amount': 8.0,   'description': 'To Investment Account',  'dateTime': DateTime(2025, 5, 21, 14, 20)},
-    {'type': 'Withdraw',  'amount': 3.0,   'description': 'Coffee with friends',    'dateTime': DateTime(2025, 5, 20, 19, 10)},
-    {'type': 'Deposit',   'amount': 60.0,  'description': 'Freelance Project',      'dateTime': DateTime(2025, 5, 19, 13, 50)},
-    {'type': 'Withdraw',  'amount': 12.0,  'description': 'Cinema Ticket',          'dateTime': DateTime(2025, 5, 18, 21, 15)},
-    {'type': 'Transfer',  'amount': 25.0,  'description': 'To Family Support',      'dateTime': DateTime(2025, 5, 17, 11, 30)},
-  ];
+  @override
+  ConsumerState<Historypage> createState() => _HistorypageState();
+}
+
+class _HistorypageState extends ConsumerState<Historypage> {
+  List<TransactionModel> _transactions = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final db = ref.read(dbProvider);
+    final txs = await db.getTransactions(widget.accountId);
+    if (mounted) {
+      setState(() {
+        _transactions = txs;
+        _loading = false;
+      });
+    }
+  }
+
+  /// Groups transactions by "Month Year" preserving order (desc).
+  List<_Item> get _items {
+    final result = <_Item>[];
+    String? lastMonth;
+
+    for (final tx in _transactions) {
+      final month = _monthLabel(tx.createdAt);
+      if (month != lastMonth) {
+        result.add(_Item.header(month));
+        lastMonth = month;
+      }
+      result.add(_Item.tx(tx));
+    }
+    return result;
+  }
+
+  String _monthLabel(DateTime dt) {
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return '${months[dt.month]} ${dt.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +73,7 @@ class Historypage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header ───────────────────────────────────────────────
+            // ── Header ──────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.s,
@@ -49,7 +91,7 @@ class Historypage extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '$pageName History',
+                      '${widget.accountName} History',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontFamily: 'Rubik',
@@ -59,34 +101,163 @@ class Historypage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Balance placeholder to keep title centered
                   const SizedBox(width: 48),
                 ],
               ),
             ),
 
-            // ── List ─────────────────────────────────────────────────
+            // ── Content ─────────────────────────────────────────────
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.m,
-                  vertical: AppSizes.s,
-                ),
-                itemCount: _transactions.length,
-                itemBuilder: (context, index) {
-                  final tx = _transactions[index];
-                  return TransactionCard(
-                    type: tx['type'] as String,
-                    amount: tx['amount'] as double,
-                    description: tx['description'] as String,
-                    dateTime: tx['dateTime'] as DateTime,
-                  );
-                },
-              ),
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primary))
+                  : _transactions.isEmpty
+                      ? _emptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSizes.m,
+                            vertical: AppSizes.s,
+                          ),
+                          itemCount: _items.length,
+                          itemBuilder: (context, index) {
+                            final item = _items[index];
+                            if (item.isHeader) {
+                              return _MonthHeader(label: item.month!);
+                            }
+                            final tx = item.tx!;
+                            return TransactionCard(
+                              type: _txDisplayType(tx.type),
+                              amount: tx.amount,
+                              description: tx.title.isNotEmpty
+                                  ? tx.title
+                                  : _txDisplayType(tx.type),
+                              subtitle: _txSubtitle(tx),
+                              dateTime: tx.createdAt,
+                            );
+                          },
+                        ),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _emptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSizes.l),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.07),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.history_rounded,
+                color: AppColors.primary, size: AppSizes.xxl),
+          ),
+          const SizedBox(height: AppSizes.m),
+          const Text(
+            'No transactions yet',
+            style: TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: AppSizes.fontL,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: AppSizes.s),
+          Text(
+            'Your history will appear here.',
+            style: TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: AppSizes.fontS,
+              color: Colors.grey[400],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Maps DB transaction type → display type for TransactionCard styling.
+  String _txDisplayType(String type) {
+    switch (type) {
+      case 'deposit':
+      case 'salary':
+      case 'initial':
+        return 'Deposit';
+      case 'withdraw':
+      case 'bill_paid':
+        return 'Withdraw';
+      case 'transfer_in':
+      case 'transfer_out':
+        return 'Transfer';
+      default:
+        return 'Deposit';
+    }
+  }
+
+  /// Returns a "From X" / "To X" subtitle for transfer transactions.
+  String? _txSubtitle(TransactionModel tx) {
+    if (tx.type == 'transfer_in' && tx.relatedAccountId != null) {
+      return 'From ${_accountName(tx.relatedAccountId!)}';
+    }
+    if (tx.type == 'transfer_out' && tx.relatedAccountId != null) {
+      return 'To ${_accountName(tx.relatedAccountId!)}';
+    }
+    return null;
+  }
+
+  String _accountName(int id) {
+    switch (id) {
+      case kWalletId: return 'Wallet';
+      case kBudgetId: return 'Monthly Budget';
+      case kSavingsId: return 'Savings';
+      default: return 'Unknown';
+    }
+  }
+}
+
+// ── Month header ──────────────────────────────────────────────────────────────
+
+class _MonthHeader extends StatelessWidget {
+  final String label;
+  const _MonthHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+          top: AppSizes.m, bottom: AppSizes.s, left: AppSizes.xs),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontFamily: 'Rubik',
+          fontSize: AppSizes.fontXS,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+          color: Colors.grey[400],
+        ),
+      ),
+    );
+  }
+}
+
+// ── List item (header or transaction) ────────────────────────────────────────
+
+class _Item {
+  final bool isHeader;
+  final String? month;
+  final TransactionModel? tx;
+
+  const _Item.header(this.month)
+      : isHeader = true,
+        tx = null;
+
+  const _Item.tx(this.tx)
+      : isHeader = false,
+        month = null;
 }

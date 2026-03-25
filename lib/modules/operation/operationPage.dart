@@ -1,20 +1,24 @@
+import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ── Account model ─────────────────────────────────────────────────────────────
+// ── Account display model ──────────────────────────────────────────────────────
 
 class _Account {
+  final int id;
   final String name;
   final IconData icon;
-  final int balance;
-  const _Account(this.name, this.icon, this.balance);
+  final double balance;
+  const _Account(this.id, this.name, this.icon, this.balance);
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 class OperationPage extends ConsumerStatefulWidget {
   const OperationPage({super.key});
@@ -24,20 +28,22 @@ class OperationPage extends ConsumerStatefulWidget {
 }
 
 class _OperationPageState extends ConsumerState<OperationPage> {
-  int _step = 0; // 0 → account, 1 → operation, 2 → amount
+  int _step = 0; // 0=account, 1=operation, 2=amount+details
 
   _Account? _account;
   String? _operation; // 'deposit' | 'withdraw'
 
   final _amountCtrl = TextEditingController();
+  final _titleCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
 
   @override
   void dispose() {
     _amountCtrl.dispose();
+    _titleCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
-
-  // ── Navigation ────────────────────────────────────────────────────────────
 
   void _next() => setState(() => _step++);
 
@@ -49,39 +55,80 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     }
   }
 
-  // ── Confirm ───────────────────────────────────────────────────────────────
-
-  void _confirm() {
+  Future<void> _confirm() async {
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    final messenger = ScaffoldMessenger.of(context);
+
     if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Enter a valid amount',
-              style: TextStyle(fontFamily: 'Rubik')),
-          backgroundColor: AppColors.myRed,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusM)),
-        ),
-      );
+      AppToast.error(messenger, 'Enter a valid amount');
       return;
     }
-    // TODO: wire to state management
+
+    final title = _titleCtrl.text.trim().isNotEmpty
+        ? _titleCtrl.text.trim()
+        : (_operation == 'deposit' ? 'Deposit' : 'Withdraw');
+    final note = _noteCtrl.text.trim();
+    final isDeposit = _operation == 'deposit';
+    final amountStr = amount % 1 == 0
+        ? amount.toInt().toString()
+        : amount.toStringAsFixed(2);
+
+    final tx = TransactionModel(
+      id: 0,
+      accountId: _account!.id,
+      type: isDeposit ? 'deposit' : 'withdraw',
+      amount: amount,
+      title: title,
+      note: note,
+      createdAt: DateTime.now(),
+    );
+
+    bool success;
+    if (isDeposit) {
+      await ref.read(accountsProvider.notifier).deposit(_account!.id, amount, tx);
+      success = true;
+    } else {
+      success = await ref.read(accountsProvider.notifier).withdraw(_account!.id, amount, tx);
+    }
+
+    if (!mounted) return;
+    if (!success) {
+      AppToast.error(messenger, 'Insufficient balance in ${_account!.name}');
+      return;
+    }
+
+    AppToast.success(
+      messenger,
+      isDeposit
+          ? '+ $amountStr JOD deposited to ${_account!.name}'
+          : '- $amountStr JOD withdrawn from ${_account!.name}',
+    );
     Navigator.pop(context);
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(profileProvider);
+    final accounts = ref.watch(accountsProvider);
 
-    final List<_Account> accounts = [
-      _Account('Income Account', Icons.account_balance_wallet_rounded,
-          profile.income),
-      const _Account('Saving Account', Icons.savings_rounded, 1000),
-      _Account('Monthly Expenses', Icons.receipt_long_rounded,
-          profile.expenses),
+    final List<_Account> accList = [
+      _Account(
+        kWalletId,
+        AccountType.wallet.displayName,
+        Icons.account_balance_wallet_rounded,
+        accounts.firstWhere((a) => a.id == kWalletId).balance,
+      ),
+      _Account(
+        kSavingsId,
+        AccountType.savings.displayName,
+        Icons.savings_rounded,
+        accounts.firstWhere((a) => a.id == kSavingsId).balance,
+      ),
+      _Account(
+        kBudgetId,
+        AccountType.budget.displayName,
+        Icons.receipt_long_rounded,
+        accounts.firstWhere((a) => a.id == kBudgetId).balance,
+      ),
     ];
 
     return Scaffold(
@@ -100,7 +147,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
             key: ValueKey(_step),
             child: switch (_step) {
               0 => _StepAccount(
-                  accounts: accounts,
+                  accounts: accList,
                   onBack: _back,
                   onSelect: (acc) {
                     _account = acc;
@@ -113,13 +160,17 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                   onSelect: (op) {
                     _operation = op;
                     _amountCtrl.clear();
+                    _titleCtrl.clear();
+                    _noteCtrl.clear();
                     _next();
                   },
                 ),
               _ => _StepAmount(
                   account: _account!,
                   operation: _operation!,
-                  controller: _amountCtrl,
+                  amountCtrl: _amountCtrl,
+                  titleCtrl: _titleCtrl,
+                  noteCtrl: _noteCtrl,
                   onBack: _back,
                   onConfirm: _confirm,
                 ),
@@ -165,7 +216,7 @@ class _StepAccount extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s),
           Text(
-            'Select the account on which you want\nto perform the operation:',
+            'Select the account you want to\nperform the operation on:',
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -220,7 +271,7 @@ class _StepOperation extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.s),
           Text(
-            'Select the operation you want to perform:',
+            'Select what you want to do on\n${account.name}:',
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -229,8 +280,6 @@ class _StepOperation extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSizes.xl),
-
-          // ── Deposit ──────────────────────────────────────────────
           _OperationButton(
             label: 'Deposit',
             bg: AppColors.myGreen,
@@ -238,8 +287,6 @@ class _StepOperation extends StatelessWidget {
             onTap: () => onSelect('deposit'),
           ),
           const SizedBox(height: AppSizes.m),
-
-          // ── Withdraw ─────────────────────────────────────────────
           _OperationButton(
             label: 'Withdraw',
             bg: AppColors.myRed.withValues(alpha: 0.15),
@@ -252,35 +299,36 @@ class _StepOperation extends StatelessWidget {
   }
 }
 
-// ── Step 2 — Enter amount ─────────────────────────────────────────────────────
+// ── Step 2 — Enter amount + details ───────────────────────────────────────────
 
 class _StepAmount extends StatelessWidget {
   final _Account account;
   final String operation;
-  final TextEditingController controller;
+  final TextEditingController amountCtrl;
+  final TextEditingController titleCtrl;
+  final TextEditingController noteCtrl;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
 
   const _StepAmount({
     required this.account,
     required this.operation,
-    required this.controller,
+    required this.amountCtrl,
+    required this.titleCtrl,
+    required this.noteCtrl,
     required this.onBack,
     required this.onConfirm,
   });
 
   bool get _isDeposit => operation == 'deposit';
-
-  Color get _accentColor =>
-      _isDeposit ? AppColors.myGreen : AppColors.myRed;
-
+  Color get _accentColor => _isDeposit ? AppColors.myGreen : AppColors.myRed;
   Color get _fieldBg => _isDeposit
       ? AppColors.myGreen.withValues(alpha: 0.12)
       : AppColors.myRed.withValues(alpha: 0.10);
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +348,7 @@ class _StepAmount extends StatelessWidget {
           const SizedBox(height: AppSizes.s),
           Text(
             'Enter the amount you want to '
-            '${_isDeposit ? 'deposit' : 'withdraw'}:',
+            '${_isDeposit ? 'deposit into' : 'withdraw from'} ${account.name}:',
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -309,14 +357,14 @@ class _StepAmount extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.xl),
 
-          // ── Amount field ──────────────────────────────────────────
+          // Amount field
           Container(
             decoration: BoxDecoration(
               color: _fieldBg,
               borderRadius: BorderRadius.circular(AppSizes.radiusL),
             ),
             child: TextField(
-              controller: controller,
+              controller: amountCtrl,
               autofocus: true,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
@@ -350,9 +398,27 @@ class _StepAmount extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: AppSizes.m),
+
+          // Title field
+          _DetailField(
+            controller: titleCtrl,
+            label: 'Title (optional)',
+            hint: _isDeposit ? 'e.g. Freelance payment' : 'e.g. Grocery shopping',
+            icon: Icons.label_outline_rounded,
+          ),
+          const SizedBox(height: AppSizes.s + 4),
+
+          // Note field
+          _DetailField(
+            controller: noteCtrl,
+            label: 'Note (optional)',
+            hint: 'Additional details...',
+            icon: Icons.notes_rounded,
+          ),
           const SizedBox(height: AppSizes.l),
 
-          // ── Confirm button ────────────────────────────────────────
+          // Confirm button
           SizedBox(
             width: double.infinity,
             height: AppSizes.buttonHeight,
@@ -376,6 +442,7 @@ class _StepAmount extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: AppSizes.l),
         ],
       ),
     );
@@ -462,7 +529,8 @@ class _AccountCard extends StatelessWidget {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: '${account.balance} ',
+                        text:
+                            '${account.balance % 1 == 0 ? account.balance.toInt() : account.balance.toStringAsFixed(2)} ',
                         style: const TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontL,
@@ -525,6 +593,50 @@ class _OperationButton extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: textColor,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final IconData icon;
+
+  const _DetailField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF2F3F7),
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+      ),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(
+          fontFamily: 'Rubik',
+          fontSize: AppSizes.fontM,
+          color: AppColors.primary,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: Icon(icon, color: Colors.grey[400], size: AppSizes.iconM),
+          labelStyle:
+              TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+          hintStyle:
+              TextStyle(fontFamily: 'Rubik', color: Colors.grey[300]),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
         ),
       ),
     );

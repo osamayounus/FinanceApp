@@ -1,4 +1,6 @@
+import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
+import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +10,11 @@ class SavingCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final balance = ref
+        .watch(accountsProvider)
+        .firstWhere((a) => a.id == kSavingsId)
+        .balance;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXXL),
       child: Container(
@@ -20,24 +27,10 @@ class SavingCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            // ── Decorative circles ──────────────────────────────────
-            Positioned(
-              top: -28,
-              right: -18,
-              child: _circle(130, 0.15),
-            ),
-            Positioned(
-              top: 18,
-              right: 52,
-              child: _circle(70, 0.10),
-            ),
-            Positioned(
-              bottom: -40,
-              left: -20,
-              child: _circle(110, 0.08),
-            ),
+            Positioned(top: -28, right: -18, child: _circle(130, 0.15)),
+            Positioned(top: 18, right: 52, child: _circle(70, 0.10)),
+            Positioned(bottom: -40, left: -20, child: _circle(110, 0.08)),
 
-            // ── Content ─────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSizes.m,
@@ -46,7 +39,6 @@ class SavingCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Icon + title
                   Row(
                     children: [
                       Container(
@@ -65,7 +57,7 @@ class SavingCard extends ConsumerWidget {
                       ),
                       const SizedBox(width: AppSizes.s),
                       const Text(
-                        'Saving Account',
+                        'Savings',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontS,
@@ -78,7 +70,6 @@ class SavingCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Balance label
                   Text(
                     'Balance',
                     style: TextStyle(
@@ -90,14 +81,15 @@ class SavingCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 2),
 
-                  // Amount
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      const Text(
-                        '1000',
-                        style: TextStyle(
+                      Text(
+                        balance % 1 == 0
+                            ? '${balance.toInt()}'
+                            : balance.toStringAsFixed(2),
+                        style: const TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: 38,
                           fontWeight: FontWeight.w900,
@@ -119,14 +111,17 @@ class SavingCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // Button
                   _CardButton(
                     label: 'History',
                     icon: Icons.history_rounded,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => Historypage('Saving')),
+                        builder: (_) => const Historypage(
+                          accountId: kSavingsId,
+                          accountName: 'Savings',
+                        ),
+                      ),
                     ),
                   ),
                 ],

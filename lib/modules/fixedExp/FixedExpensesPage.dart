@@ -1,7 +1,11 @@
+import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/expense_model.dart';
+import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,11 +24,54 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   // Keeps track of the currently open slide so we can close it when another opens
   VoidCallback? _closeOpenCard;
 
+  final _fabKey = GlobalKey();
+  OverlayEntry? _tutorialEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowTutorial());
+  }
+
   @override
   void dispose() {
+    _tutorialEntry?.remove();
     _nameCtrl.dispose();
     _amountCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _maybeShowTutorial() async {
+    final db = ref.read(dbProvider);
+    final seen = await db.hasTutorialSeen('tutorial_bills');
+    if (seen || !mounted) return;
+    await db.markTutorialSeen('tutorial_bills');
+    if (!mounted) return;
+    _tutorialEntry = OverlayEntry(
+        builder: (_) => TutorialOverlay(
+          steps: [
+            const TutorialStep(
+              title: 'Monthly Bills',
+              body: 'Track your fixed monthly expenses here — rent, subscriptions, utilities, and more.',
+            ),
+            TutorialStep(
+              targetKey: _fabKey,
+              title: 'Add a Bill',
+              body: 'Tap + to add a new bill. Each month, mark it as paid and it deducts from your Wallet.',
+              position: TipPosition.above,
+            ),
+            const TutorialStep(
+              title: 'Swipe to Manage',
+              body: 'Swipe a bill right to edit it, or left to delete it.\nTap the ✓ icon to mark it as paid.',
+            ),
+          ],
+          onDone: () {
+            _tutorialEntry?.remove();
+            _tutorialEntry = null;
+          },
+        ),
+      );
+    Overlay.of(context).insert(_tutorialEntry!);
   }
 
   // ── Single edit/add bottom sheet ────────────────────────────────────────────
@@ -117,6 +164,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
 
   // ── Confirm paid dialog ──────────────────────────────────────────────────────
   void _showConfirmPaid(int index) {
+    final bill = ref.read(expensesProvider)[index];
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -146,7 +194,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             ),
             const SizedBox(height: AppSizes.s),
             Text(
-              'This action cannot be undone.',
+              'This will deduct ${bill.amount} JOD from your Wallet.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: 'Rubik',
@@ -160,9 +208,28 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
                 const SizedBox(width: AppSizes.s + 4),
                 Expanded(
-                  child: _primaryBtn('Confirm', () {
-                    ref.read(expensesProvider.notifier).markPaid(index);
+                  child: _primaryBtn('Confirm', () async {
                     Navigator.pop(ctx);
+                    final messenger = ScaffoldMessenger.of(context);
+                    final tx = TransactionModel(
+                      id: 0,
+                      accountId: kWalletId,
+                      type: 'bill_paid',
+                      amount: bill.amount.toDouble(),
+                      title: bill.name,
+                      note: 'Monthly Bill',
+                      createdAt: DateTime.now(),
+                    );
+                    final success = await ref
+                        .read(accountsProvider.notifier)
+                        .withdraw(kWalletId, bill.amount.toDouble(), tx);
+                    if (!success) {
+                      AppToast.error(messenger, 'Insufficient wallet balance');
+                      return;
+                    }
+                    await ref.read(expensesProvider.notifier).markPaid(index);
+                    AppToast.success(
+                        messenger, '${bill.name} paid · - ${bill.amount} JOD');
                   }, color: AppColors.myGreen),
                 ),
               ],
@@ -454,6 +521,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
+        key: _fabKey,
         onPressed: () => _showBottomSheet(),
         backgroundColor: AppColors.primary,
         elevation: 2,
