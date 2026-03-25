@@ -16,15 +16,15 @@ class Profilepage extends ConsumerWidget {
       backgroundColor: const Color(0xFFF2F3F7),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Page title ──────────────────────────────────────
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSizes.s),
-                child: Text(
+                child: const Text(
                   'Profile',
                   style: TextStyle(
                     fontFamily: 'Rubik',
@@ -34,13 +34,13 @@ class Profilepage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSizes.m),
+              SizedBox(height: AppSizes.m),
 
               // ── Avatar card ─────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding:
-                    const EdgeInsets.symmetric(vertical: AppSizes.xl),
+                    EdgeInsets.symmetric(vertical: AppSizes.xl),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius:
@@ -80,17 +80,17 @@ class Profilepage extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: AppSizes.m),
+                    SizedBox(height: AppSizes.m),
                     Text(
                       user.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: AppSizes.fontXXL,
                         fontFamily: 'Rubik',
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary,
                       ),
                     ),
-                    const SizedBox(height: AppSizes.xs),
+                    SizedBox(height: AppSizes.xs),
                     Text(
                       'Personal Account',
                       style: TextStyle(
@@ -102,11 +102,11 @@ class Profilepage extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
 
               // ── Section label ────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.only(
+                padding: EdgeInsets.only(
                     left: AppSizes.xs, bottom: AppSizes.s),
                 child: Text(
                   'PERSONAL INFO',
@@ -229,12 +229,12 @@ class Profilepage extends ConsumerWidget {
         padding: EdgeInsets.only(
             bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(
                 top: Radius.circular(AppSizes.xxl - 8)),
           ),
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
               AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -250,17 +250,17 @@ class Profilepage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppSizes.fontXXL,
                   fontFamily: 'Rubik',
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFFF2F3F7),
@@ -276,14 +276,14 @@ class Profilepage extends ConsumerWidget {
                   inputFormatters: isNumber
                       ? [FilteringTextInputFormatter.digitsOnly]
                       : null,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppSizes.fontXL,
                     fontFamily: 'Rubik',
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(
+                    contentPadding: EdgeInsets.symmetric(
                       horizontal: AppSizes.m,
                       vertical: AppSizes.m,
                     ),
@@ -297,7 +297,7 @@ class Profilepage extends ConsumerWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               Row(
                 children: [
                   Expanded(
@@ -309,7 +309,7 @@ class Profilepage extends ConsumerWidget {
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                             vertical: AppSizes.m),
                       ),
                       child: Text(
@@ -323,7 +323,7 @@ class Profilepage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSizes.s + 4),
+                  SizedBox(width: AppSizes.s + 4),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
@@ -339,10 +339,10 @@ class Profilepage extends ConsumerWidget {
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                             vertical: AppSizes.m),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Save',
                         style: TextStyle(
                           color: Colors.white,
@@ -394,14 +394,14 @@ class _InfoRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.vertical(
           top: isFirst
-              ? const Radius.circular(AppSizes.radiusXL)
+              ? Radius.circular(AppSizes.radiusXL)
               : Radius.zero,
           bottom: isLast
-              ? const Radius.circular(AppSizes.radiusXL)
+              ? Radius.circular(AppSizes.radiusXL)
               : Radius.zero,
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
           child: Row(
             children: [
@@ -416,7 +416,7 @@ class _InfoRow extends StatelessWidget {
                 child:
                     Icon(icon, color: iconColor, size: AppSizes.iconM),
               ),
-              const SizedBox(width: AppSizes.m),
+              SizedBox(width: AppSizes.m),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +432,7 @@ class _InfoRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       value,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: AppSizes.fontM,
                         fontFamily: 'Rubik',
                         fontWeight: FontWeight.w600,

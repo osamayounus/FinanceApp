@@ -139,7 +139,7 @@ class _HomepageState extends ConsumerState<Homepage> {
                         const SizedBox(height: 2),
                         Text(
                           user.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Rubik',
                             fontSize: AppSizes.fontXXL,
                             fontWeight: FontWeight.bold,
@@ -166,7 +166,7 @@ class _HomepageState extends ConsumerState<Homepage> {
                         user.name.isNotEmpty
                             ? user.name[0].toUpperCase()
                             : '?',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Rubik',
                           fontWeight: FontWeight.bold,
                           fontSize: AppSizes.fontL,
@@ -229,7 +229,7 @@ class _HomepageState extends ConsumerState<Homepage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppSizes.s + 4),
+                  SizedBox(height: AppSizes.s + 4),
                   KeyedSubtree(
                     key: _transferBtnKey,
                     child: LightButton(

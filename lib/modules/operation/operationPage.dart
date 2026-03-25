@@ -198,14 +198,14 @@ class _StepAccount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
+      padding: EdgeInsets.symmetric(horizontal: AppSizes.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           _BackButton(onBack: onBack),
-          const SizedBox(height: AppSizes.l),
-          const Text(
+          SizedBox(height: AppSizes.l),
+          Text(
             'Choose the account',
             style: TextStyle(
               fontFamily: 'Rubik',
@@ -214,7 +214,7 @@ class _StepAccount extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           Text(
             'Select the account you want to\nperform the operation on:',
             style: TextStyle(
@@ -224,10 +224,10 @@ class _StepAccount extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: AppSizes.xl),
+          SizedBox(height: AppSizes.xl),
           ...accounts.map(
             (acc) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSizes.m),
+              padding: EdgeInsets.only(bottom: AppSizes.m),
               child: _AccountCard(account: acc, onTap: () => onSelect(acc)),
             ),
           ),
@@ -253,14 +253,14 @@ class _StepOperation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
+      padding: EdgeInsets.symmetric(horizontal: AppSizes.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           _BackButton(onBack: onBack),
-          const SizedBox(height: AppSizes.l),
-          const Text(
+          SizedBox(height: AppSizes.l),
+          Text(
             'Choose the operation',
             style: TextStyle(
               fontFamily: 'Rubik',
@@ -269,7 +269,7 @@ class _StepOperation extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           Text(
             'Select what you want to do on\n${account.name}:',
             style: TextStyle(
@@ -279,14 +279,14 @@ class _StepOperation extends StatelessWidget {
               height: 1.5,
             ),
           ),
-          const SizedBox(height: AppSizes.xl),
+          SizedBox(height: AppSizes.xl),
           _OperationButton(
             label: 'Deposit',
             bg: AppColors.myGreen,
             textColor: AppColors.primary,
             onTap: () => onSelect('deposit'),
           ),
-          const SizedBox(height: AppSizes.m),
+          SizedBox(height: AppSizes.m),
           _OperationButton(
             label: 'Withdraw',
             bg: AppColors.myRed.withValues(alpha: 0.15),
@@ -329,14 +329,14 @@ class _StepAmount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
+      padding: EdgeInsets.symmetric(horizontal: AppSizes.l),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           _BackButton(onBack: onBack),
-          const SizedBox(height: AppSizes.l),
-          const Text(
+          SizedBox(height: AppSizes.l),
+          Text(
             'Enter the amount',
             style: TextStyle(
               fontFamily: 'Rubik',
@@ -345,7 +345,7 @@ class _StepAmount extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           Text(
             'Enter the amount you want to '
             '${_isDeposit ? 'deposit into' : 'withdraw from'} ${account.name}:',
@@ -355,7 +355,7 @@ class _StepAmount extends StatelessWidget {
               color: Colors.grey[400],
             ),
           ),
-          const SizedBox(height: AppSizes.xl),
+          SizedBox(height: AppSizes.xl),
 
           // Amount field
           Container(
@@ -393,12 +393,12 @@ class _StepAmount extends StatelessWidget {
                   ),
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
+                contentPadding: EdgeInsets.symmetric(
                     horizontal: AppSizes.m, vertical: AppSizes.m),
               ),
             ),
           ),
-          const SizedBox(height: AppSizes.m),
+          SizedBox(height: AppSizes.m),
 
           // Title field
           _DetailField(
@@ -407,7 +407,7 @@ class _StepAmount extends StatelessWidget {
             hint: _isDeposit ? 'e.g. Freelance payment' : 'e.g. Grocery shopping',
             icon: Icons.label_outline_rounded,
           ),
-          const SizedBox(height: AppSizes.s + 4),
+          SizedBox(height: AppSizes.s + 4),
 
           // Note field
           _DetailField(
@@ -416,7 +416,7 @@ class _StepAmount extends StatelessWidget {
             hint: 'Additional details...',
             icon: Icons.notes_rounded,
           ),
-          const SizedBox(height: AppSizes.l),
+          SizedBox(height: AppSizes.l),
 
           // Confirm button
           SizedBox(
@@ -431,7 +431,7 @@ class _StepAmount extends StatelessWidget {
                     borderRadius:
                         BorderRadius.circular(AppSizes.radiusXL)),
               ),
-              child: const Text(
+              child: Text(
                 'Confirm',
                 style: TextStyle(
                   fontFamily: 'Rubik',
@@ -442,7 +442,7 @@ class _StepAmount extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: AppSizes.l),
+          SizedBox(height: AppSizes.l),
         ],
       ),
     );
@@ -461,7 +461,7 @@ class _BackButton extends StatelessWidget {
       onPressed: onBack,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(),
-      icon: const Icon(
+      icon: Icon(
         Icons.arrow_back_ios_new_rounded,
         color: AppColors.primary,
         size: AppSizes.iconM,
@@ -499,7 +499,7 @@ class _AccountCard extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
                 horizontal: AppSizes.m, vertical: AppSizes.m),
             child: Row(
               children: [
@@ -513,11 +513,11 @@ class _AccountCard extends StatelessWidget {
                   child: Icon(account.icon,
                       color: Colors.white70, size: AppSizes.iconM),
                 ),
-                const SizedBox(width: AppSizes.m),
+                SizedBox(width: AppSizes.m),
                 Expanded(
                   child: Text(
                     account.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: AppSizes.fontM,
                       fontWeight: FontWeight.w600,
@@ -531,14 +531,14 @@ class _AccountCard extends StatelessWidget {
                       TextSpan(
                         text:
                             '${account.balance % 1 == 0 ? account.balance.toInt() : account.balance.toStringAsFixed(2)} ',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontL,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                         ),
                       ),
-                      const TextSpan(
+                      TextSpan(
                         text: 'JOD',
                         style: TextStyle(
                           fontFamily: 'Rubik',
@@ -621,7 +621,7 @@ class _DetailField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Rubik',
           fontSize: AppSizes.fontM,
           color: AppColors.primary,
@@ -635,7 +635,7 @@ class _DetailField extends StatelessWidget {
           hintStyle:
               TextStyle(fontFamily: 'Rubik', color: Colors.grey[300]),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
         ),
       ),

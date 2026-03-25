@@ -8,6 +8,7 @@ import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // ── App configuration (set before runApp, updated after onboarding) ───────────
 
@@ -97,19 +98,22 @@ class AppRoot extends StatelessWidget {
           ]);
         }
 
-        return ProviderScope(
-          // Changing the key forces a full rebuild of providers when setup state changes.
-          key: ValueKey(config.isSetup),
-          overrides: overrides,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData(
-              colorScheme:
-                  ColorScheme.fromSeed(seedColor: const Color(0xFF0A0F2C)),
+        return ScreenUtilInit(
+          designSize: const Size(390, 844),
+          minTextAdapt: true,
+          child: ProviderScope(
+            key: ValueKey(config.isSetup),
+            overrides: overrides,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                colorScheme:
+                    ColorScheme.fromSeed(seedColor: const Color(0xFF0A0F2C)),
+              ),
+              home: config.isSetup
+                  ? const Walletlayoutpage()
+                  : const OnboardingPage(),
             ),
-            home: config.isSetup
-                ? const Walletlayoutpage()
-                : const OnboardingPage(),
           ),
         );
       },

@@ -72,24 +72,24 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
               horizontal: AppSizes.xl, vertical: AppSizes.l),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: AppSizes.xl),
+              SizedBox(height: AppSizes.xl),
 
               // ── Header ──────────────────────────────────────────────
               Text(
                 _stepTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Rubik',
                   fontSize: AppSizes.fontTitle,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: AppSizes.s),
+              SizedBox(height: AppSizes.s),
               Text(
                 _stepSubtitle,
                 style: TextStyle(
@@ -100,7 +100,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 ),
               ),
 
-              const SizedBox(height: AppSizes.xxl),
+              SizedBox(height: AppSizes.xxl),
 
               // ── Input ────────────────────────────────────────────────
               AnimatedSwitcher(
@@ -131,7 +131,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 }),
               ),
 
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
 
               // ── Button ───────────────────────────────────────────────
               SizedBox(
@@ -157,7 +157,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                         )
                       : Text(
                           _step < 3 ? 'Continue' : 'Get Started',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'Rubik',
                             fontSize: AppSizes.fontM,
                             fontWeight: FontWeight.bold,
@@ -305,7 +305,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             color: Colors.white.withValues(alpha: 0.4),
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
             horizontal: AppSizes.l,
             vertical: AppSizes.l,
           ),

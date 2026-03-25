@@ -4,68 +4,68 @@ import 'package:flutter/material.dart';
 
 class AppTextStyles {
   // Light backgrounds (dark text)
-  static const TextStyle titleDark = TextStyle(
+  static TextStyle get titleDark => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontTitle,
     fontWeight: FontWeight.bold,
     color: AppColors.primary,
   );
 
-  static const TextStyle headingDark = TextStyle(
+  static TextStyle get headingDark => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontXXL,
     fontWeight: FontWeight.bold,
     color: AppColors.primary,
   );
 
-  static const TextStyle bodyDark = TextStyle(
+  static TextStyle get bodyDark => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontM,
     color: AppColors.primary,
   );
 
   // Dark backgrounds (light text)
-  static const TextStyle titleLight = TextStyle(
+  static TextStyle get titleLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontTitle,
     fontWeight: FontWeight.bold,
     color: AppColors.secondary,
   );
 
-  static const TextStyle headingLight = TextStyle(
+  static TextStyle get headingLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontXXL,
     fontWeight: FontWeight.bold,
     color: AppColors.secondary,
   );
 
-  static const TextStyle bodyLight = TextStyle(
+  static TextStyle get bodyLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontM,
     color: AppColors.secondary,
   );
 
-  static const TextStyle labelLight = TextStyle(
+  static TextStyle get labelLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontS,
     color: AppColors.secondary,
   );
 
-  static const TextStyle subtleLight = TextStyle(
+  static TextStyle get subtleLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontXL,
     color: Colors.white54,
   );
 
   // Buttons
-  static const TextStyle buttonLight = TextStyle(
+  static TextStyle get buttonLight => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontM,
     fontWeight: FontWeight.bold,
     color: AppColors.primary,
   );
 
-  static const TextStyle buttonDark = TextStyle(
+  static TextStyle get buttonDark => TextStyle(
     fontFamily: 'Rubik',
     fontSize: AppSizes.fontM,
     fontWeight: FontWeight.bold,

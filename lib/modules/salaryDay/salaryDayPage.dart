@@ -121,21 +121,21 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusXL),
         ),
-        contentPadding: const EdgeInsets.fromLTRB(
+        contentPadding: EdgeInsets.fromLTRB(
             AppSizes.l, AppSizes.l, AppSizes.l, AppSizes.m),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSizes.m),
+              padding: EdgeInsets.all(AppSizes.m),
               decoration: BoxDecoration(
                 color: AppColors.myGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Text('💸', style: TextStyle(fontSize: 36)),
             ),
-            const SizedBox(height: AppSizes.m),
-            const Text(
+            SizedBox(height: AppSizes.m),
+            Text(
               'نزل الراتب؟',
               style: TextStyle(
                 fontFamily: 'Rubik',
@@ -144,7 +144,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(height: AppSizes.s),
+            SizedBox(height: AppSizes.s),
             Text(
               'Salary: ${user.salary.toInt()} JOD\nBudget: ${user.monthlyBudget.toInt()} JOD\n\nThis will update your balances and reset all bills.',
               textAlign: TextAlign.center,
@@ -155,7 +155,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                 height: 1.5,
               ),
             ),
-            const SizedBox(height: AppSizes.l),
+            SizedBox(height: AppSizes.l),
             Row(
               children: [
                 Expanded(
@@ -168,7 +168,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                             BorderRadius.circular(AppSizes.radiusL),
                       ),
                       padding:
-                          const EdgeInsets.symmetric(vertical: AppSizes.m),
+                          EdgeInsets.symmetric(vertical: AppSizes.m),
                     ),
                     child: Text(
                       'Nope 😅',
@@ -180,7 +180,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSizes.s + 4),
+                SizedBox(width: AppSizes.s + 4),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () async {
@@ -195,7 +195,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                             BorderRadius.circular(AppSizes.radiusL),
                       ),
                       padding:
-                          const EdgeInsets.symmetric(vertical: AppSizes.m),
+                          EdgeInsets.symmetric(vertical: AppSizes.m),
                     ),
                     child: const Text(
                       'YES! 🎉',
@@ -248,14 +248,14 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.l),
+            padding: EdgeInsets.symmetric(horizontal: AppSizes.l),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // ── Rule card ───────────────────────────────────────
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(AppSizes.m),
+                  padding: EdgeInsets.all(AppSizes.m),
                   decoration: BoxDecoration(
                     border: Border.all(
                       color: AppColors.myGreen.withValues(alpha: 0.4),
@@ -269,7 +269,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                             horizontal: AppSizes.s, vertical: 3),
                         decoration: BoxDecoration(
                           color: AppColors.myGreen,
@@ -287,12 +287,12 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSizes.s),
+                      SizedBox(height: AppSizes.s),
                       Wrap(
                         crossAxisAlignment: WrapCrossAlignment.center,
                         spacing: AppSizes.xs,
                         children: [
-                          const Text(
+                          Text(
                             'Press the coin if and only if',
                             style: TextStyle(
                               fontFamily: 'Rubik',
@@ -300,7 +300,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                               fontSize: AppSizes.fontS,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'نزل الراتب',
                             style: TextStyle(
                               fontFamily: 'Rubik',
@@ -327,7 +327,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSizes.xxl),
+                SizedBox(height: AppSizes.xxl),
 
                 // ── Coin with pulse rings ─────────────────────────
                 GestureDetector(
@@ -410,7 +410,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSizes.xxl),
+                SizedBox(height: AppSizes.xxl),
 
                 Text(
                   'Your balance will be updated automatically',

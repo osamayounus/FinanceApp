@@ -162,11 +162,11 @@ class _TransferPageState extends ConsumerState<TransferPage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: AppColors.primary, size: AppSizes.iconM),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Transfer',
           style: TextStyle(
             fontFamily: 'Rubik',
@@ -177,14 +177,14 @@ class _TransferPageState extends ConsumerState<TransferPage> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
             AppSizes.m, AppSizes.s, AppSizes.m, AppSizes.l),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── From / To card ─────────────────────────────────────
             _SectionLabel('Accounts'),
-            const SizedBox(height: AppSizes.s),
+            SizedBox(height: AppSizes.s),
             _card(
               child: Column(
                 children: [
@@ -212,7 +212,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                             border: Border.all(
                                 color: Colors.grey[200]!, width: 1.5),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.swap_vert_rounded,
                             color: AppColors.primary,
                             size: AppSizes.iconM,
@@ -230,14 +230,14 @@ class _TransferPageState extends ConsumerState<TransferPage> {
               ),
             ),
 
-            const SizedBox(height: AppSizes.m),
+            SizedBox(height: AppSizes.m),
 
             // ── Amount card ─────────────────────────────────────────
             _SectionLabel('Amount'),
-            const SizedBox(height: AppSizes.s),
+            SizedBox(height: AppSizes.s),
             _card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                     horizontal: AppSizes.m, vertical: AppSizes.s),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,9 +274,9 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: AppSizes.s),
+                        SizedBox(width: AppSizes.s),
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                               horizontal: AppSizes.s + 2,
                               vertical: AppSizes.xs + 2),
                           decoration: BoxDecoration(
@@ -285,7 +285,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                             borderRadius:
                                 BorderRadius.circular(AppSizes.radiusS),
                           ),
-                          child: const Text(
+                          child: Text(
                             'JOD',
                             style: TextStyle(
                               fontFamily: 'Rubik',
@@ -297,7 +297,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSizes.s),
+                    SizedBox(height: AppSizes.s),
                     Text(
                       'Available: ${fromBalance % 1 == 0 ? fromBalance.toInt() : fromBalance.toStringAsFixed(2)} JOD',
                       style: TextStyle(
@@ -306,7 +306,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                         color: Colors.grey[400],
                       ),
                     ),
-                    const SizedBox(height: AppSizes.m),
+                    SizedBox(height: AppSizes.m),
                     Wrap(
                       spacing: AppSizes.s,
                       children: [5, 10, 20, 50, 100].map((v) {
@@ -314,7 +314,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                           onTap: () => setState(
                               () => _amountCtrl.text = v.toString()),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                                 horizontal: AppSizes.m,
                                 vertical: AppSizes.s),
                             decoration: BoxDecoration(
@@ -325,7 +325,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                             ),
                             child: Text(
                               '+$v',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Rubik',
                                 fontSize: AppSizes.fontS,
                                 fontWeight: FontWeight.w600,
@@ -341,14 +341,14 @@ class _TransferPageState extends ConsumerState<TransferPage> {
               ),
             ),
 
-            const SizedBox(height: AppSizes.m),
+            SizedBox(height: AppSizes.m),
 
             // ── Details card ────────────────────────────────────────
             _SectionLabel('Details'),
-            const SizedBox(height: AppSizes.s),
+            SizedBox(height: AppSizes.s),
             _card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                     horizontal: AppSizes.m, vertical: AppSizes.s),
                 child: Column(
                   children: [
@@ -358,7 +358,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                       hint: 'e.g. Moving to savings',
                       icon: Icons.label_outline_rounded,
                     ),
-                    const SizedBox(height: AppSizes.s),
+                    SizedBox(height: AppSizes.s),
                     _DetailField(
                       controller: _noteCtrl,
                       label: 'Note (optional)',
@@ -370,7 +370,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
               ),
             ),
 
-            const SizedBox(height: AppSizes.m),
+            SizedBox(height: AppSizes.m),
 
             // ── Summary hint ────────────────────────────────────────
             Center(
@@ -394,7 +394,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                 ),
               ),
             ),
-            const SizedBox(height: AppSizes.m),
+            SizedBox(height: AppSizes.m),
 
             // ── Confirm button ──────────────────────────────────────
             SizedBox(
@@ -409,7 +409,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                       borderRadius:
                           BorderRadius.circular(AppSizes.radiusXL)),
                 ),
-                child: const Text(
+                child: Text(
                   'Confirm Transfer',
                   style: TextStyle(
                     fontFamily: 'Rubik',
@@ -479,7 +479,7 @@ class _AccountRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppSizes.radiusXL),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
+        padding: EdgeInsets.symmetric(
             horizontal: AppSizes.m, vertical: AppSizes.m),
         child: Row(
           children: [
@@ -493,7 +493,7 @@ class _AccountRow extends StatelessWidget {
               child: Icon(account.icon,
                   color: Colors.white, size: AppSizes.iconM),
             ),
-            const SizedBox(width: AppSizes.m),
+            SizedBox(width: AppSizes.m),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -509,7 +509,7 @@ class _AccountRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     account.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: AppSizes.fontM,
                       fontWeight: FontWeight.w600,
@@ -550,7 +550,7 @@ class _DetailField extends StatelessWidget {
       ),
       child: TextField(
         controller: controller,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'Rubik',
           fontSize: AppSizes.fontM,
           color: AppColors.primary,
@@ -565,7 +565,7 @@ class _DetailField extends StatelessWidget {
           hintStyle:
               TextStyle(fontFamily: 'Rubik', color: Colors.grey[300]),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
         ),
       ),
@@ -589,7 +589,7 @@ class _AccountPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXXL)),
@@ -597,7 +597,7 @@ class _AccountPickerSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: AppSizes.m),
+          SizedBox(height: AppSizes.m),
           Center(
             child: Container(
               width: 40,
@@ -607,21 +607,21 @@ class _AccountPickerSheet extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const SizedBox(height: AppSizes.m),
+          SizedBox(height: AppSizes.m),
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontL,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           ...accounts.map((acc) {
             final selected = acc.id == currentId;
             return ListTile(
-              contentPadding: const EdgeInsets.symmetric(
+              contentPadding: EdgeInsets.symmetric(
                   horizontal: AppSizes.l, vertical: AppSizes.xs),
               leading: Container(
                 width: 44,
@@ -647,13 +647,13 @@ class _AccountPickerSheet extends StatelessWidget {
                 ),
               ),
               trailing: selected
-                  ? const Icon(Icons.check_circle_rounded,
+                  ? Icon(Icons.check_circle_rounded,
                       color: AppColors.myGreen, size: AppSizes.iconM)
                   : null,
               onTap: () => Navigator.pop(context, acc.id),
             );
           }),
-          const SizedBox(height: AppSizes.l),
+          SizedBox(height: AppSizes.l),
         ],
       ),
     );

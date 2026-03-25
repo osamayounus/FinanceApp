@@ -32,7 +32,7 @@ class MonthlyExpCard extends ConsumerWidget {
             Positioned(bottom: -40, left: -20, child: _circle(110, 0.06)),
 
             Padding(
-              padding: const EdgeInsets.symmetric(
+              padding: EdgeInsets.symmetric(
                 horizontal: AppSizes.m,
                 vertical: AppSizes.m,
               ),
@@ -49,14 +49,14 @@ class MonthlyExpCard extends ConsumerWidget {
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusM),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.receipt_long_rounded,
                           color: Colors.white,
                           size: AppSizes.iconM,
                         ),
                       ),
-                      const SizedBox(width: AppSizes.s),
-                      const Text(
+                      SizedBox(width: AppSizes.s),
+                      Text(
                         'Monthly Budget',
                         style: TextStyle(
                           fontFamily: 'Rubik',
@@ -96,7 +96,7 @@ class MonthlyExpCard extends ConsumerWidget {
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: AppSizes.s),
+                      SizedBox(width: AppSizes.s),
                       Text(
                         'JOD',
                         style: TextStyle(
@@ -165,16 +165,16 @@ class _CardButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppSizes.radiusM),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
                 vertical: AppSizes.s + 2, horizontal: AppSizes.s),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, color: Colors.white, size: AppSizes.iconS),
-                const SizedBox(width: AppSizes.xs + 2),
+                SizedBox(width: AppSizes.xs + 2),
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontS,
                     fontWeight: FontWeight.w600,

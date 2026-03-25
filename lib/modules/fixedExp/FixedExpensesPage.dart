@@ -94,12 +94,12 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
         ),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius:
                 BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXXL)),
           ),
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
               AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -115,25 +115,25 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   ),
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               Text(
                 item == null ? 'Add Bill' : 'Edit Bill',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Rubik',
                   fontSize: AppSizes.fontXXL,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               _field(_nameCtrl, 'Bill Name'),
-              const SizedBox(height: AppSizes.m),
+              SizedBox(height: AppSizes.m),
               _field(_amountCtrl, 'Amount (JOD)', isNumber: true),
-              const SizedBox(height: AppSizes.l),
+              SizedBox(height: AppSizes.l),
               Row(
                 children: [
                   Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
-                  const SizedBox(width: AppSizes.s + 4),
+                  SizedBox(width: AppSizes.s + 4),
                   Expanded(
                     child: _primaryBtn(
                       item == null ? 'Add' : 'Save',
@@ -174,16 +174,16 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSizes.m),
+              padding: EdgeInsets.all(AppSizes.m),
               decoration: BoxDecoration(
                 color: AppColors.myGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_outline,
+              child: Icon(Icons.check_circle_outline,
                   color: AppColors.myGreen, size: AppSizes.iconXL),
             ),
-            const SizedBox(height: AppSizes.m),
-            const Text(
+            SizedBox(height: AppSizes.m),
+            Text(
               'Mark as Paid?',
               style: TextStyle(
                 fontFamily: 'Rubik',
@@ -192,7 +192,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(height: AppSizes.s),
+            SizedBox(height: AppSizes.s),
             Text(
               'This will deduct ${bill.amount} JOD from your Wallet.',
               textAlign: TextAlign.center,
@@ -202,11 +202,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   color: Colors.grey[400],
                   height: 1.5),
             ),
-            const SizedBox(height: AppSizes.l),
+            SizedBox(height: AppSizes.l),
             Row(
               children: [
                 Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
-                const SizedBox(width: AppSizes.s + 4),
+                SizedBox(width: AppSizes.s + 4),
                 Expanded(
                   child: _primaryBtn('Confirm', () async {
                     Navigator.pop(ctx);
@@ -250,15 +250,15 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(AppSizes.s),
+                  padding: EdgeInsets.all(AppSizes.s),
                   decoration: BoxDecoration(
                     color: AppColors.myRed.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.delete_outline,
+                  child: Icon(Icons.delete_outline,
                       color: AppColors.myRed, size: AppSizes.iconM),
                 ),
-                const SizedBox(width: AppSizes.s + 4),
+                SizedBox(width: AppSizes.s + 4),
                 const Text('Delete Bill',
                     style: TextStyle(
                         fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
@@ -323,7 +323,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             borderSide:
                 const BorderSide(color: AppColors.primary, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
         ),
       ),
@@ -336,7 +336,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           side: BorderSide(color: Colors.grey[200]!),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusL)),
-          padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+          padding: EdgeInsets.symmetric(vertical: AppSizes.m),
         ),
         child: Text('Cancel',
             style: TextStyle(
@@ -354,7 +354,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           elevation: 0,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusL)),
-          padding: const EdgeInsets.symmetric(vertical: AppSizes.m),
+          padding: EdgeInsets.symmetric(vertical: AppSizes.m),
         ),
         child: Text(label,
             style: TextStyle(
@@ -381,11 +381,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: AppColors.primary, size: AppSizes.iconM),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Bills',
           style: TextStyle(
             fontFamily: 'Rubik',
@@ -401,16 +401,16 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppSizes.l),
+                    padding: EdgeInsets.all(AppSizes.l),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.07),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.receipt_long_outlined,
+                    child: Icon(Icons.receipt_long_outlined,
                         color: AppColors.primary, size: AppSizes.xxl),
                   ),
-                  const SizedBox(height: AppSizes.m),
-                  const Text(
+                  SizedBox(height: AppSizes.m),
+                  Text(
                     'No bills yet',
                     style: TextStyle(
                         fontFamily: 'Rubik',
@@ -418,7 +418,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                         fontWeight: FontWeight.bold,
                         color: AppColors.primary),
                   ),
-                  const SizedBox(height: AppSizes.s),
+                  SizedBox(height: AppSizes.s),
                   Text('Tap + to add a bill',
                       style: TextStyle(
                           fontFamily: 'Rubik',
@@ -431,10 +431,10 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
               children: [
                 // ── Summary header ─────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
                       AppSizes.m, 0, AppSizes.m, AppSizes.m),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                         horizontal: AppSizes.m, vertical: AppSizes.m),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -480,7 +480,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 // ── List ───────────────────────────────────────────
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                         horizontal: AppSizes.m),
                     itemCount: expenses.length,
                     itemBuilder: (context, index) {
@@ -488,7 +488,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       return Padding(
                         key: ValueKey(item.id),
                         padding:
-                            const EdgeInsets.only(bottom: AppSizes.s + 4),
+                            EdgeInsets.only(bottom: AppSizes.s + 4),
                         child: _SlidableExpenseCard(
                           item: item,
                           onOpened: (closeFn) {
@@ -525,7 +525,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         onPressed: () => _showBottomSheet(),
         backgroundColor: AppColors.primary,
         elevation: 2,
-        child: const Icon(Icons.add, color: Colors.white, size: AppSizes.iconL),
+        child: Icon(Icons.add, color: Colors.white, size: AppSizes.iconL),
       ),
     );
   }
@@ -689,7 +689,7 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                               color: const Color(0xFF1C2D6B),
                               alignment: Alignment.centerLeft,
                               padding:
-                                  const EdgeInsets.only(left: AppSizes.l),
+                                  EdgeInsets.only(left: AppSizes.l),
                               child: const _ActionLabel(
                                 icon: Icons.edit_outlined,
                                 label: 'Edit',
@@ -708,7 +708,7 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                             color: const Color(0xFF8B1A1A),
                             alignment: Alignment.centerRight,
                             padding:
-                                const EdgeInsets.only(right: AppSizes.l),
+                                EdgeInsets.only(right: AppSizes.l),
                             child: const _ActionLabel(
                               icon: Icons.delete_outline_rounded,
                               label: 'Delete',
@@ -753,10 +753,10 @@ class _ActionLabel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: Colors.white, size: AppSizes.iconM),
-        const SizedBox(height: AppSizes.xs),
+        SizedBox(height: AppSizes.xs),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: AppSizes.fontXS,
             fontFamily: 'Rubik',
@@ -816,7 +816,7 @@ class _ExpenseCard extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
+            padding: EdgeInsets.symmetric(
                 horizontal: AppSizes.m, vertical: AppSizes.m),
             child: Row(
               children: [
@@ -836,7 +836,7 @@ class _ExpenseCard extends StatelessWidget {
                     size: AppSizes.iconM,
                   ),
                 ),
-                const SizedBox(width: AppSizes.m),
+                SizedBox(width: AppSizes.m),
                 // Name + amount
                 Expanded(
                   child: Column(
@@ -868,7 +868,7 @@ class _ExpenseCard extends StatelessWidget {
                 GestureDetector(
                   onTap: onCheckTap,
                   child: Container(
-                    padding: const EdgeInsets.all(AppSizes.s),
+                    padding: EdgeInsets.all(AppSizes.s),
                     decoration: BoxDecoration(
                       color: paid
                           ? AppColors.myGreen.withValues(alpha: 0.15)

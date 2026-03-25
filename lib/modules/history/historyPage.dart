@@ -75,7 +75,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
           children: [
             // ── Header ──────────────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.symmetric(
+              padding: EdgeInsets.symmetric(
                 horizontal: AppSizes.s,
                 vertical: AppSizes.s,
               ),
@@ -83,7 +83,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: AppColors.primary,
                       size: AppSizes.iconM,
@@ -93,7 +93,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
                     child: Text(
                       '${widget.accountName} History',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Rubik',
                         fontSize: AppSizes.fontXXL,
                         fontWeight: FontWeight.bold,
@@ -115,7 +115,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
                   : _transactions.isEmpty
                       ? _emptyState()
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                             horizontal: AppSizes.m,
                             vertical: AppSizes.s,
                           ),
@@ -150,16 +150,16 @@ class _HistorypageState extends ConsumerState<Historypage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(AppSizes.l),
+            padding: EdgeInsets.all(AppSizes.l),
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.07),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.history_rounded,
+            child: Icon(Icons.history_rounded,
                 color: AppColors.primary, size: AppSizes.xxl),
           ),
-          const SizedBox(height: AppSizes.m),
-          const Text(
+          SizedBox(height: AppSizes.m),
+          Text(
             'No transactions yet',
             style: TextStyle(
               fontFamily: 'Rubik',
@@ -168,7 +168,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: AppSizes.s),
+          SizedBox(height: AppSizes.s),
           Text(
             'Your history will appear here.',
             style: TextStyle(
@@ -230,7 +230,7 @@ class _MonthHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
+      padding: EdgeInsets.only(
           top: AppSizes.m, bottom: AppSizes.s, left: AppSizes.xs),
       child: Text(
         label.toUpperCase(),

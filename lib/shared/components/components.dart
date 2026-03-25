@@ -41,7 +41,7 @@ class AppToast {
               Expanded(
                 child: Text(
                   message,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Rubik',
                     fontWeight: FontWeight.w600,
                     fontSize: AppSizes.fontS,
@@ -136,7 +136,7 @@ class DarkButton extends StatelessWidget {
         onPressed: onPressed,
         child: Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppSizes.fontM,
             fontFamily: 'Rubik',
             fontWeight: FontWeight.bold,
@@ -169,8 +169,8 @@ class TransactionCard extends StatelessWidget {
     final _TxStyle style = _TxStyle.of(type);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: AppSizes.s + 4),
-      padding: const EdgeInsets.symmetric(
+      margin: EdgeInsets.only(bottom: AppSizes.s + 4),
+      padding: EdgeInsets.symmetric(
         horizontal: AppSizes.m,
         vertical: AppSizes.m - 2,
       ),
@@ -197,7 +197,7 @@ class TransactionCard extends StatelessWidget {
             ),
             child: Icon(style.icon, color: style.iconColor, size: AppSizes.iconM),
           ),
-          const SizedBox(width: AppSizes.m),
+          SizedBox(width: AppSizes.m),
           // Description + date
           Expanded(
             child: Column(
@@ -205,7 +205,7 @@ class TransactionCard extends StatelessWidget {
               children: [
                 Text(
                   description,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Rubik',
                     fontWeight: FontWeight.w600,
                     fontSize: AppSizes.fontM,
@@ -236,7 +236,7 @@ class TransactionCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: AppSizes.s),
+          SizedBox(width: AppSizes.s),
           // Amount
           Text(
             '${style.sign}${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 1)} JOD',
