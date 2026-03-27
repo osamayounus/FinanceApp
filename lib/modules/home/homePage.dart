@@ -24,9 +24,11 @@ class Homepage extends ConsumerStatefulWidget {
 class _HomepageState extends ConsumerState<Homepage> {
   // GlobalKeys for tutorial spotlights
   final _cardsKey = GlobalKey();
+  final _addAccountKey = GlobalKey();
   final _opBtnKey = GlobalKey();
   final _transferBtnKey = GlobalKey();
 
+  final _swiperController = SwiperController();
   OverlayEntry? _tutorialEntry;
 
   @override
@@ -37,6 +39,7 @@ class _HomepageState extends ConsumerState<Homepage> {
 
   @override
   void dispose() {
+    _swiperController.dispose();
     _tutorialEntry?.remove();
     super.dispose();
   }
@@ -57,6 +60,13 @@ class _HomepageState extends ConsumerState<Homepage> {
                 'Swipe left or right to browse your Wallet, Savings, and Monthly Budget cards.',
             position: TipPosition.below,
             padding: 16,
+          ),
+          TutorialStep(
+            targetKey: _addAccountKey,
+            title: 'Add Account',
+            body:
+                'Tap + to create a custom account — give it a name, color, and icon. Perfect for travel funds, side projects, or anything you want to track separately.',
+            position: TipPosition.below,
           ),
           TutorialStep(
             targetKey: _opBtnKey,
@@ -107,13 +117,21 @@ class _HomepageState extends ConsumerState<Homepage> {
     _tutorialEntry = null;
   }
 
-  void _showAddAccountSheet(BuildContext context) {
-    showModalBottomSheet(
+  Future<void> _showAddAccountSheet(BuildContext context) async {
+    final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _AddAccountSheet(),
     );
+    if (added == true && mounted) {
+      final accounts = ref.read(accountsProvider);
+      final customCount = accounts.where((a) => a.isCustom).length;
+      final lastIndex = 2 + customCount; // 3 built-in (0,1,2) + custom
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _swiperController.move(lastIndex);
+      });
+    }
   }
 
   void _showHowItWorksSheet(BuildContext context) {
@@ -459,6 +477,7 @@ class _HomepageState extends ConsumerState<Homepage> {
                       children: [
                         // "+" add account button (left)
                         GestureDetector(
+                          key: _addAccountKey,
                           onTap: () => _showAddAccountSheet(context),
                           child: Container(
                             width: 28,
@@ -524,6 +543,7 @@ class _HomepageState extends ConsumerState<Homepage> {
                       alignment: Alignment.center,
                       children: [
                         Swiper(
+                          controller: _swiperController,
                           itemBuilder: (BuildContext context, int index) =>
                               cards[index],
                           itemCount: cards.length,
@@ -794,6 +814,6 @@ class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
           _selectedColor,
           icon.codePoint,
         );
-    if (mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context, true);
   }
 }

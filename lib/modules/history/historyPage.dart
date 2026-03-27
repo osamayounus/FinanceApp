@@ -203,15 +203,17 @@ class _HistorypageState extends ConsumerState<Historypage> {
   /// Returns a "From X" / "To X" subtitle for transfer transactions.
   String? _txSubtitle(TransactionModel tx) {
     if (tx.type == 'transfer_in' && tx.relatedAccountId != null) {
-      return 'From ${_accountName(tx.relatedAccountId!)}';
+      return 'From ${_accountName(tx.relatedAccountId!, tx.note)}';
     }
     if (tx.type == 'transfer_out' && tx.relatedAccountId != null) {
-      return 'To ${_accountName(tx.relatedAccountId!)}';
+      return 'To ${_accountName(tx.relatedAccountId!, tx.note)}';
     }
     return null;
   }
 
-  String _accountName(int id) {
+  /// Resolves an account name by id. If the account no longer exists (deleted),
+  /// falls back to the name embedded in [note] after the '\x00' separator.
+  String _accountName(int id, String note) {
     switch (id) {
       case kWalletId: return 'Wallet';
       case kBudgetId: return 'Monthly Budget';
@@ -221,7 +223,10 @@ class _HistorypageState extends ConsumerState<Historypage> {
         try {
           return accounts.firstWhere((a) => a.id == id).displayName;
         } catch (_) {
-          return 'Unknown';
+          // Use the account name embedded in the note field as a fallback.
+          final sep = note.indexOf('\x00');
+          final stored = sep >= 0 ? note.substring(sep + 1) : note;
+          return stored.isNotEmpty ? stored : 'Deleted Account';
         }
     }
   }

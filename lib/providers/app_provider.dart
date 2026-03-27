@@ -136,7 +136,8 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
           accountId: kWalletId,
           type: 'transfer_in',
           amount: account.balance,
-          title: 'From ${account.displayName}',
+          title: 'Transfer',
+          note: account.displayName,
           relatedAccountId: accountId,
           createdAt: now,
         ));

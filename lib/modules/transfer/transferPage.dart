@@ -121,13 +121,15 @@ class _TransferPageState extends ConsumerState<TransferPage> {
         ? amount.toInt().toString()
         : amount.toStringAsFixed(2);
 
+    // Embed the counterpart account name after a null separator so history
+    // can show the correct name even if the account is later deleted.
     final txOut = TransactionModel(
       id: 0,
       accountId: _fromId,
       type: 'transfer_out',
       amount: amount,
       title: title,
-      note: note,
+      note: '$note\x00${toAcc.name}',
       relatedAccountId: _toId,
       createdAt: now,
     );
@@ -137,7 +139,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       type: 'transfer_in',
       amount: amount,
       title: title,
-      note: note,
+      note: '$note\x00${fromAcc.name}',
       relatedAccountId: _fromId,
       createdAt: now,
     );
