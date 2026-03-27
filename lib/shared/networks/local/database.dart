@@ -29,7 +29,7 @@ class AppDatabase {
     final path = join(dbPath, 'finance.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -52,6 +52,9 @@ class AppDatabase {
     if (oldVersion < 4) {
       await db.execute("ALTER TABLE bills ADD COLUMN category TEXT NOT NULL DEFAULT ''");
     }
+    if (oldVersion < 5) {
+      await db.execute("ALTER TABLE user ADD COLUMN currency TEXT NOT NULL DEFAULT 'JOD'");
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -60,7 +63,8 @@ class AppDatabase {
         id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         salary REAL NOT NULL,
-        monthly_budget REAL NOT NULL
+        monthly_budget REAL NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'JOD'
       )
     ''');
     await db.execute('''

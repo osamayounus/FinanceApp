@@ -30,6 +30,9 @@ class UserNotifier extends StateNotifier<UserModel> {
 final userProvider =
     StateNotifierProvider<UserNotifier, UserModel>((ref) => throw UnimplementedError());
 
+/// Convenience provider — reads the user's selected currency symbol (e.g. 'JOD').
+final currencyProvider = Provider<String>((ref) => ref.watch(userProvider).currency);
+
 // ── Accounts ──────────────────────────────────────────────────────────────────
 
 class AccountsNotifier extends StateNotifier<List<AccountModel>> {

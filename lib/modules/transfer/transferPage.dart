@@ -4,6 +4,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -158,12 +159,14 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       return;
     }
 
-    AppToast.success(messenger, '$amountStr JOD transferred to ${toAcc.name}');
+    final currency = ref.read(currencyProvider);
+    AppToast.success(messenger, '$amountStr $currency transferred to ${toAcc.name}');
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final currency = ref.watch(currencyProvider);
     final allAccounts = ref.watch(accountsProvider);
     final accList = [
       const _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
@@ -314,7 +317,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                                 BorderRadius.circular(AppSizes.radiusS),
                           ),
                           child: Text(
-                            'JOD',
+                            currency,
                             style: TextStyle(
                               fontFamily: 'Rubik',
                               fontSize: AppSizes.fontS,
@@ -327,7 +330,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                     ),
                     SizedBox(height: AppSizes.s),
                     Text(
-                      'Available: ${fromBalance % 1 == 0 ? fromBalance.toInt() : fromBalance.toStringAsFixed(2)} JOD',
+                      'Available: ${fmtAmt(fromBalance, currency)}',
                       style: TextStyle(
                         fontFamily: 'Rubik',
                         fontSize: AppSizes.fontXS,

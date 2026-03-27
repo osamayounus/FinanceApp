@@ -115,6 +115,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
 
   void _showConfirmDialog() {
     final user = ref.read(userProvider);
+    final currency = ref.read(currencyProvider);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -146,7 +147,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
             ),
             SizedBox(height: AppSizes.s),
             Text(
-              'Salary: ${user.salary.toInt()} JOD\nBudget: ${user.monthlyBudget.toInt()} JOD\n\nThis will update your balances and reset all bills.',
+              'Salary: ${user.salary.toInt()} $currency\nBudget: ${user.monthlyBudget.toInt()} $currency\n\nThis will update your balances and reset all bills.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Rubik',
@@ -217,6 +218,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
 
   Future<void> _processSalaryDay() async {
     final user = ref.read(userProvider);
+    final currency = ref.read(currencyProvider);
     final messenger = ScaffoldMessenger.of(context);
     await ref
         .read(accountsProvider.notifier)
@@ -226,7 +228,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
     if (!mounted) return;
     AppToast.success(
       messenger,
-      'Salary day done! + ${user.salary.toInt()} JOD received 🎉',
+      'Salary day done! + ${user.salary.toInt()} $currency received 🎉',
     );
   }
 

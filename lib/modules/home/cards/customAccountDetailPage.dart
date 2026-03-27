@@ -3,6 +3,7 @@ import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -492,7 +493,7 @@ class _CustomAccountDetailPageState
             style: TextStyle(
                 fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
         content: Text(
-          'This account has ${widget.account.balance % 1 == 0 ? widget.account.balance.toInt() : widget.account.balance.toStringAsFixed(2)} JOD remaining.\nWhat do you want to do with it?',
+          'This account has ${fmtAmt(widget.account.balance, ref.read(currencyProvider))} remaining.\nWhat do you want to do with it?',
           style: const TextStyle(fontFamily: 'Rubik', height: 1.6),
         ),
         actionsAlignment: MainAxisAlignment.start,

@@ -6,6 +6,7 @@ import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,7 +167,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 SizedBox(height: AppSizes.m),
 
                 // Amount
-                _field(_amountCtrl, 'Amount (JOD)', isNumber: true),
+                _field(_amountCtrl, 'Amount (${ref.read(currencyProvider)})', isNumber: true),
                 SizedBox(height: AppSizes.l),
 
                 // Category label
@@ -300,7 +301,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             ),
             SizedBox(height: AppSizes.s),
             Text(
-              'This will deduct ${bill.amount} JOD from your Wallet.',
+              'This will deduct ${bill.amount} ${ref.read(currencyProvider)} from your Wallet.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontFamily: 'Rubik',
@@ -343,7 +344,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                           .markPaid(realIndex);
                     }
                     AppToast.success(
-                        messenger, '${bill.name} paid · - ${bill.amount} JOD');
+                        messenger, '${bill.name} paid · - ${bill.amount} ${ref.read(currencyProvider)}');
                   }, color: AppColors.myGreen),
                 ),
               ],
@@ -481,6 +482,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   @override
   Widget build(BuildContext context) {
     final expenses = ref.watch(expensesProvider);
+    final currency = ref.watch(currencyProvider);
 
     // Collect used categories in predefined order
     final usedCatNames = _kCats
@@ -579,17 +581,17 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       children: [
                         _summaryTile(
                             label: 'Total',
-                            value: '$totalAmount JOD',
+                            value: '$totalAmount $currency',
                             color: AppColors.primary),
                         _vDivider(),
                         _summaryTile(
                             label: 'Paid',
-                            value: '$paidAmount JOD',
+                            value: '$paidAmount $currency',
                             color: AppColors.myGreen),
                         _vDivider(),
                         _summaryTile(
                             label: 'Remaining',
-                            value: '${totalAmount - paidAmount} JOD',
+                            value: '${totalAmount - paidAmount} $currency',
                             color: AppColors.myRed),
                         _vDivider(),
                         _summaryTile(
@@ -650,6 +652,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                                   EdgeInsets.only(bottom: AppSizes.s + 4),
                               child: _SlidableExpenseCard(
                                 item: item,
+                                currency: currency,
                                 onOpened: (closeFn) {
                                   _closeOpenCard?.call();
                                   _closeOpenCard = closeFn;
@@ -765,6 +768,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
 
 class _SlidableExpenseCard extends StatefulWidget {
   final ExpenseModel item;
+  final String currency;
   final void Function(VoidCallback closeFn)? onOpened;
   final VoidCallback? onClosed;
   final VoidCallback? onEdit;
@@ -774,6 +778,7 @@ class _SlidableExpenseCard extends StatefulWidget {
 
   const _SlidableExpenseCard({
     required this.item,
+    required this.currency,
     this.onOpened,
     this.onClosed,
     this.onEdit,
@@ -906,6 +911,7 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                   offset: Offset(displayOffset, 0),
                   child: _ExpenseCard(
                     item: widget.item,
+                    currency: widget.currency,
                     onTap: displayOffset == 0 ? widget.onTap : _close,
                     onCheckTap:
                         displayOffset == 0 ? widget.onCheckTap : null,
@@ -949,10 +955,11 @@ class _ActionLabel extends StatelessWidget {
 
 class _ExpenseCard extends StatelessWidget {
   final ExpenseModel item;
+  final String currency;
   final VoidCallback? onTap;
   final VoidCallback? onCheckTap;
 
-  const _ExpenseCard({required this.item, this.onTap, this.onCheckTap});
+  const _ExpenseCard({required this.item, required this.currency, this.onTap, this.onCheckTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1037,7 +1044,7 @@ class _ExpenseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${item.amount} JOD',
+                        '${item.amount} $currency',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontXXL - 2,

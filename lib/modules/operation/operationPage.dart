@@ -4,6 +4,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,17 +98,19 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       return;
     }
 
+    final currency = ref.read(currencyProvider);
     AppToast.success(
       messenger,
       isDeposit
-          ? '+ $amountStr JOD deposited to ${_account!.name}'
-          : '- $amountStr JOD withdrawn from ${_account!.name}',
+          ? '+ $amountStr $currency deposited to ${_account!.name}'
+          : '- $amountStr $currency withdrawn from ${_account!.name}',
     );
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final currency = ref.watch(currencyProvider);
     final accounts = ref.watch(accountsProvider);
 
     final List<_Account> accList = [
@@ -156,6 +159,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
             child: switch (_step) {
               0 => _StepAccount(
                   accounts: accList,
+                  currency: currency,
                   onBack: _back,
                   onSelect: (acc) {
                     _account = acc;
@@ -176,6 +180,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
               _ => _StepAmount(
                   account: _account!,
                   operation: _operation!,
+                  currency: currency,
                   amountCtrl: _amountCtrl,
                   titleCtrl: _titleCtrl,
                   noteCtrl: _noteCtrl,
@@ -194,11 +199,13 @@ class _OperationPageState extends ConsumerState<OperationPage> {
 
 class _StepAccount extends StatelessWidget {
   final List<_Account> accounts;
+  final String currency;
   final VoidCallback onBack;
   final void Function(_Account) onSelect;
 
   const _StepAccount({
     required this.accounts,
+    required this.currency,
     required this.onBack,
     required this.onSelect,
   });
@@ -236,7 +243,7 @@ class _StepAccount extends StatelessWidget {
           ...accounts.map(
             (acc) => Padding(
               padding: EdgeInsets.only(bottom: AppSizes.m),
-              child: _AccountCard(account: acc, onTap: () => onSelect(acc)),
+              child: _AccountCard(account: acc, currency: currency, onTap: () => onSelect(acc)),
             ),
           ),
         ],
@@ -312,6 +319,7 @@ class _StepOperation extends StatelessWidget {
 class _StepAmount extends StatelessWidget {
   final _Account account;
   final String operation;
+  final String currency;
   final TextEditingController amountCtrl;
   final TextEditingController titleCtrl;
   final TextEditingController noteCtrl;
@@ -321,6 +329,7 @@ class _StepAmount extends StatelessWidget {
   const _StepAmount({
     required this.account,
     required this.operation,
+    required this.currency,
     required this.amountCtrl,
     required this.titleCtrl,
     required this.noteCtrl,
@@ -393,7 +402,7 @@ class _StepAmount extends StatelessWidget {
                   color: _accentColor.withValues(alpha: 0.4),
                 ),
                 suffix: Text(
-                  'JOD',
+                  currency,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontWeight: FontWeight.w600,
@@ -480,8 +489,9 @@ class _BackButton extends StatelessWidget {
 
 class _AccountCard extends StatelessWidget {
   final _Account account;
+  final String currency;
   final VoidCallback onTap;
-  const _AccountCard({required this.account, required this.onTap});
+  const _AccountCard({required this.account, required this.currency, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -547,7 +557,7 @@ class _AccountCard extends StatelessWidget {
                         ),
                       ),
                       TextSpan(
-                        text: 'JOD',
+                        text: currency,
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontXS,

@@ -1,6 +1,9 @@
+import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── App Toast ─────────────────────────────────────────────────────────────────
 
@@ -148,7 +151,7 @@ class DarkButton extends StatelessWidget {
   }
 }
 
-class TransactionCard extends StatelessWidget {
+class TransactionCard extends ConsumerWidget {
   final String type;
   final double amount;
   final String description;
@@ -165,7 +168,8 @@ class TransactionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyProvider);
     final _TxStyle style = _TxStyle.of(type);
 
     return Container(
@@ -239,7 +243,7 @@ class TransactionCard extends StatelessWidget {
           SizedBox(width: AppSizes.s),
           // Amount
           Text(
-            '${style.sign}${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 1)} JOD',
+            '${style.sign}${fmtAmt(amount, currency)}',
             style: TextStyle(
               fontFamily: 'Rubik',
               fontWeight: FontWeight.bold,

@@ -88,6 +88,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
+    final currency = ref.watch(currencyProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
@@ -237,14 +238,14 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       iconColor: AppColors.myGreen,
                       iconBg: AppColors.myGreen.withValues(alpha: 0.1),
                       label: 'Monthly Salary',
-                      value: '${user.salary.toInt()} JOD',
+                      value: '${user.salary.toInt()} $currency',
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
                         title: 'Edit Salary',
                         initialValue: user.salary.toInt().toString(),
                         isNumber: true,
-                        suffix: 'JOD',
+                        suffix: currency,
                         onSave: (val) => ref
                             .read(userProvider.notifier)
                             .update(salary: double.tryParse(val)),
@@ -256,7 +257,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       iconColor: AppColors.myRed,
                       iconBg: AppColors.myRed.withValues(alpha: 0.1),
                       label: 'Monthly Budget',
-                      value: '${user.monthlyBudget.toInt()} JOD',
+                      value: '${user.monthlyBudget.toInt()} $currency',
                       isLast: true,
                       onTap: () => _showEditSheet(
                         context: context,
@@ -264,7 +265,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                         title: 'Edit Monthly Budget',
                         initialValue: user.monthlyBudget.toInt().toString(),
                         isNumber: true,
-                        suffix: 'JOD',
+                        suffix: currency,
                         onSave: (val) => ref
                             .read(userProvider.notifier)
                             .update(

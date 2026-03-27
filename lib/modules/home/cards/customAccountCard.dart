@@ -1,7 +1,9 @@
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/modules/home/cards/customAccountDetailPage.dart';
+import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,6 +47,7 @@ class CustomAccountCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyProvider);
     final colorPair = kCustomAccountColors[
         (account.colorIndex ?? 0).clamp(0, kCustomAccountColors.length - 1)];
     final iconData = account.iconCode != null
@@ -149,7 +152,7 @@ class CustomAccountCard extends ConsumerWidget {
                       ),
                       SizedBox(width: AppSizes.s),
                       Text(
-                        'JOD',
+                        currency,
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontM,

@@ -4,6 +4,7 @@ import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +13,7 @@ class IncomeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currency = ref.watch(currencyProvider);
     final balance = ref
         .watch(accountsProvider)
         .firstWhere((a) => a.id == kWalletId)
@@ -107,7 +109,7 @@ class IncomeCard extends ConsumerWidget {
                       ),
                       SizedBox(width: AppSizes.s),
                       Text(
-                        'JOD',
+                        currency,
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontM,
