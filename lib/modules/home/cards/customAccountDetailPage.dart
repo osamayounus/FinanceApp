@@ -1,3 +1,9 @@
+// ── CustomAccountDetailPage ───────────────────────────────────────────────────
+// Detail / edit screen for a user-created account. Reached via the ⋮ button
+// on CustomAccountCard. Allows renaming the account, changing its icon and
+// color, and contains a danger-zone section to delete the account (sweeping
+// its remaining balance back to Wallet first).
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/providers/app_provider.dart';

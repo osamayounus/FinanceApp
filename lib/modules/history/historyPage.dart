@@ -1,3 +1,7 @@
+// ── HistoryPage ───────────────────────────────────────────────────────────────
+// Full-screen transaction history for a single account. Transactions are
+// grouped by month under sticky section headers, loaded once from SQLite on init.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
@@ -23,7 +27,9 @@ class Historypage extends ConsumerStatefulWidget {
 }
 
 class _HistorypageState extends ConsumerState<Historypage> {
+  // Raw transactions in newest-first order, loaded from DB once.
   List<TransactionModel> _transactions = [];
+  // True while the initial DB fetch is in-flight; shows a spinner.
   bool _loading = true;
 
   @override

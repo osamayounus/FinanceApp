@@ -1,3 +1,7 @@
+// ── IncomeCard ────────────────────────────────────────────────────────────────
+// Wallet account swiper card. Shows the current Wallet balance and provides
+// quick-link buttons to Transaction History and the Bills (FixedExpenses) page.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/fixedExp/FixedExpensesPage.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
@@ -39,6 +43,7 @@ class IncomeCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
+            // ── Background decoration circles ───────────────────────────────
             Positioned(
                 top: -28,
                 right: -18,
@@ -60,6 +65,7 @@ class IncomeCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Header row: icon + account name ─────────────────────
                   Row(
                     children: [
                       Container(
@@ -91,6 +97,7 @@ class IncomeCard extends ConsumerWidget {
 
                   const Spacer(),
 
+                  // ── Balance label + amount + currency ─────────────────
                   Text(
                     AppStrings.balance,
                     style: TextStyle(
@@ -132,6 +139,7 @@ class IncomeCard extends ConsumerWidget {
 
                   const Spacer(),
 
+                  // ── Action buttons: History + Bills ──────────────────
                   Row(
                     children: [
                       Expanded(

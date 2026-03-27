@@ -1,3 +1,8 @@
+// ── ProfilePage ───────────────────────────────────────────────────────────────
+// Settings and personal-info page (rightmost tab). Lets the user edit name,
+// salary, budget and currency, and contains a danger-zone section for
+// resetting all app data back to the onboarding state.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
@@ -16,6 +21,7 @@ class Profilepage extends ConsumerStatefulWidget {
 }
 
 class _ProfilepageState extends ConsumerState<Profilepage> {
+  // True while the DB wipe is in-flight; prevents double-tap.
   bool _resetting = false;
 
   Future<void> _confirmReset() async {

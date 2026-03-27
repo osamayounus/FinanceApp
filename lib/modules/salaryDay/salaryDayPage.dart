@@ -1,3 +1,9 @@
+// ── SalaryDayPage ─────────────────────────────────────────────────────────────
+// First-tab landing screen shown on the user's salary day. Displays an
+// animated celebration card and a single "Process Salary Day" button that
+// triggers the atomic DB transaction: credits salary to Wallet, resets the
+// Monthly Budget, and rolls over any Savings contributions.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
@@ -55,6 +61,9 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
 
     // Tutorial is triggered from build() when this page becomes visible.
 
+    // Two rings share the same 2.4 s controller but are staggered by 0.3 s
+    // (Interval offsets) so ring 2 starts while ring 1 is already 30% through.
+    // The result is a continuous ripple effect rather than two synchronised rings.
     final curve1 = CurvedAnimation(
       parent: _pulseCtrl,
       curve: const Interval(0.0, 0.70, curve: Curves.easeOut),
@@ -234,7 +243,9 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
 
   @override
   Widget build(BuildContext context) {
-    // Show tutorial only when this page is actually visible (nav index 0).
+    // Tutorial is shown the first time the user navigates to this page (index 0).
+    // Using ref.listen inside build is the correct Riverpod pattern for reacting
+    // to provider changes as a side-effect without causing extra widget rebuilds.
     ref.listen<int>(navIndexProvider, (_, next) {
       if (next == 0 && !_tutorialTriggered) {
         _tutorialTriggered = true;

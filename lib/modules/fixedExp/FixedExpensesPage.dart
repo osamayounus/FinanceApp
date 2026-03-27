@@ -1,42 +1,23 @@
+// ── FixedExpensesPage ─────────────────────────────────────────────────────────
+// Manages recurring fixed expenses (bills). Shows a live list of expenses
+// grouped by category with swipe-to-edit/delete cards. A FAB opens a
+// bottom sheet to add a new bill; confirming also logs a bill_paid transaction
+// and deducts from the Monthly Budget account.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/expense_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/fixedExp/bill_categories.dart';
+import 'package:financeapp/modules/fixedExp/widgets/expense_card.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
-import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// ── Bill categories ───────────────────────────────────────────────────────────
-
-class _Cat {
-  final String name;
-  final IconData icon;
-  final Color color;
-  const _Cat(this.name, this.icon, this.color);
-}
-
-const _kCats = [
-  _Cat('Housing',       Icons.home_rounded,            Color(0xFF7C4DFF)),
-  _Cat('Utilities',     Icons.bolt_rounded,            Color(0xFFFFB300)),
-  _Cat('Subscriptions', Icons.play_circle_rounded,     Color(0xFFE91E63)),
-  _Cat('Transport',     Icons.directions_car_rounded,  Color(0xFF2979FF)),
-  _Cat('Health',        Icons.favorite_rounded,        Color(0xFFE53935)),
-  _Cat('Education',     Icons.school_rounded,          Color(0xFF00BCD4)),
-  _Cat('Food',          Icons.restaurant_rounded,      Color(0xFFFF6D00)),
-  _Cat('Other',         Icons.category_rounded,        Color(0xFF78909C)),
-];
-
-_Cat _catFor(String name) =>
-    _kCats.firstWhere((c) => c.name == name, orElse: () => _kCats.last);
-
-String _displayCat(ExpenseModel e) =>
-    e.category.isEmpty ? 'Other' : e.category;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -175,7 +156,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 Wrap(
                   spacing: AppSizes.s,
                   runSpacing: AppSizes.s,
-                  children: _kCats.map((cat) {
+                  children: kBillCats.map((cat) {
                     final sel = sheetCat == cat.name ||
                         (sheetCat.isEmpty && cat.name == 'Other');
                     return GestureDetector(
@@ -473,9 +454,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     final currency = ref.watch(currencyProvider);
 
     // Collect used categories in predefined order
-    final usedCatNames = _kCats
+    final usedCatNames = kBillCats
         .map((c) => c.name)
-        .where((n) => expenses.any((e) => _displayCat(e) == n))
+        .where((n) => expenses.any((e) => displayCat(e) == n))
         .toList();
     final showFilter = usedCatNames.length >= 2;
 
@@ -483,7 +464,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     final filtered = _categoryFilter == null
         ? expenses
         : expenses
-            .where((e) => _displayCat(e) == _categoryFilter)
+            .where((e) => displayCat(e) == _categoryFilter)
             .toList();
 
     // Summary (always all bills)
@@ -603,7 +584,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                         _filterChip('All', null, Icons.grid_view_rounded,
                             Colors.grey, usedCatNames),
                         ...usedCatNames.map((name) {
-                          final cat = _catFor(name);
+                          final cat = catFor(name);
                           return _filterChip(
                               name, name, cat.icon, cat.color, usedCatNames);
                         }),
@@ -638,7 +619,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                               key: ValueKey(item.id),
                               padding:
                                   EdgeInsets.only(bottom: AppSizes.s + 4),
-                              child: _SlidableExpenseCard(
+                              child: SlidableExpenseCard(
                                 item: item,
                                 currency: currency,
                                 onOpened: (closeFn) {
@@ -750,324 +731,4 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
 
   Widget _vDivider() =>
       Container(width: 1, height: 32, color: Colors.grey[100]);
-}
-
-// ── Slidable expense card ─────────────────────────────────────────────────────
-
-class _SlidableExpenseCard extends StatefulWidget {
-  final ExpenseModel item;
-  final String currency;
-  final void Function(VoidCallback closeFn)? onOpened;
-  final VoidCallback? onClosed;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
-  final VoidCallback? onTap;
-  final VoidCallback? onCheckTap;
-
-  const _SlidableExpenseCard({
-    required this.item,
-    required this.currency,
-    this.onOpened,
-    this.onClosed,
-    this.onEdit,
-    this.onDelete,
-    this.onTap,
-    this.onCheckTap,
-  });
-
-  @override
-  State<_SlidableExpenseCard> createState() => _SlidableExpenseCardState();
-}
-
-class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
-    with SingleTickerProviderStateMixin {
-  static const double _actionW = 80.0;
-
-  late final AnimationController _ctrl;
-  late Animation<double> _anim;
-  double _offset = 0;
-  bool _dragging = false;
-
-  bool get _canEdit => !widget.item.isPaid;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 260));
-    _anim = const AlwaysStoppedAnimation(0.0);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _snapTo(double target) {
-    final from = _dragging ? _offset : _anim.value;
-    _dragging = false;
-    _anim = Tween<double>(begin: from, end: target).animate(
-      CurvedAnimation(parent: _ctrl..reset(), curve: Curves.easeOutCubic),
-    );
-    _ctrl.forward();
-    if (target != 0) {
-      widget.onOpened?.call(_close);
-    } else {
-      widget.onClosed?.call();
-    }
-    setState(() {});
-  }
-
-  void _close() => _snapTo(0);
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSizes.radiusXL),
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, _) {
-          final displayOffset = _dragging ? _offset : _anim.value;
-          return GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onHorizontalDragStart: (_) {
-              _ctrl.stop();
-              _offset = _anim.value;
-              setState(() => _dragging = true);
-            },
-            onHorizontalDragUpdate: (d) {
-              if (!_dragging) return;
-              setState(() {
-                _offset += d.delta.dx;
-                _offset = _canEdit
-                    ? _offset.clamp(-_actionW, _actionW)
-                    : _offset.clamp(-_actionW, 0.0);
-              });
-            },
-            onHorizontalDragEnd: (d) {
-              final v = d.primaryVelocity ?? 0;
-              double target = 0;
-              if (_offset > _actionW * 0.5 || v > 700) {
-                target = _canEdit ? _actionW : 0;
-              } else if (_offset < -_actionW * 0.5 || v < -700) {
-                target = -_actionW;
-              }
-              _snapTo(target);
-            },
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Row(
-                    children: [
-                      if (_canEdit)
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              _close();
-                              widget.onEdit?.call();
-                            },
-                            child: Container(
-                              color: AppColors.swipeEditBg,
-                              alignment: Alignment.centerLeft,
-                              padding: EdgeInsets.only(left: AppSizes.l),
-                              child: const _ActionLabel(
-                                  icon: Icons.edit_outlined, label: 'Edit'),
-                            ),
-                          ),
-                        ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            _close();
-                            widget.onDelete?.call();
-                          },
-                          child: Container(
-                            color: AppColors.swipeDeleteBg,
-                            alignment: Alignment.centerRight,
-                            padding: EdgeInsets.only(right: AppSizes.l),
-                            child: const _ActionLabel(
-                                icon: Icons.delete_outline_rounded,
-                                label: 'Delete'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Transform.translate(
-                  offset: Offset(displayOffset, 0),
-                  child: _ExpenseCard(
-                    item: widget.item,
-                    currency: widget.currency,
-                    onTap: displayOffset == 0 ? widget.onTap : _close,
-                    onCheckTap:
-                        displayOffset == 0 ? widget.onCheckTap : null,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ── Action label ──────────────────────────────────────────────────────────────
-
-class _ActionLabel extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _ActionLabel({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white, size: AppSizes.iconM),
-        SizedBox(height: AppSizes.xs),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: AppSizes.fontXS,
-                fontFamily: 'Rubik',
-                fontWeight: FontWeight.bold)),
-      ],
-    );
-  }
-}
-
-// ── Expense card ──────────────────────────────────────────────────────────────
-
-class _ExpenseCard extends StatelessWidget {
-  final ExpenseModel item;
-  final String currency;
-  final VoidCallback? onTap;
-  final VoidCallback? onCheckTap;
-
-  const _ExpenseCard({required this.item, required this.currency, this.onTap, this.onCheckTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool paid = item.isPaid;
-    final cat = _catFor(_displayCat(item));
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSizes.radiusXL),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: paid
-                  ? [Colors.grey[200]!, Colors.grey[100]!]
-                  : [AppColors.primary, AppColors.darkGradientEnd],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(AppSizes.radiusXL),
-            border: paid
-                ? Border.all(
-                    color: AppColors.myGreen.withValues(alpha: 0.55),
-                    width: 1.5)
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: (paid ? AppColors.myGreen : AppColors.primary)
-                    .withValues(alpha: paid ? 0.12 : 0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: AppSizes.m, vertical: AppSizes.m),
-            child: Row(
-              children: [
-                // Category icon
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: paid
-                        ? Colors.grey[300]
-                        : cat.color.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusM),
-                  ),
-                  child: Icon(
-                    cat.icon,
-                    color: paid ? Colors.grey[500] : cat.color,
-                    size: AppSizes.iconM,
-                  ),
-                ),
-                SizedBox(width: AppSizes.m),
-                // Name + category + amount
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontM,
-                          fontWeight: FontWeight.w600,
-                          color: paid ? Colors.grey[500] : Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        cat.name,
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontXS,
-                          color: paid
-                              ? Colors.grey[400]
-                              : Colors.white.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        '${item.amount} $currency',
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontXXL - 2,
-                          fontWeight: FontWeight.w900,
-                          color: paid ? Colors.grey[400] : Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Check
-                GestureDetector(
-                  onTap: onCheckTap,
-                  child: Container(
-                    padding: EdgeInsets.all(AppSizes.s),
-                    decoration: BoxDecoration(
-                      color: paid
-                          ? AppColors.myGreen.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      paid
-                          ? Icons.check_circle_rounded
-                          : Icons.check_circle_outline_rounded,
-                      color: paid ? AppColors.myGreen : Colors.white60,
-                      size: AppSizes.iconM + 4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }

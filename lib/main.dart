@@ -1,3 +1,9 @@
+// ── main.dart ─────────────────────────────────────────────────────────────────
+// App entry point. Reads saved user data from SQLite, then mounts either
+// OnboardingPage (first run) or WalletLayoutPage (returning user) inside a
+// ProviderScope seeded with all initial state. appConfigNotifier drives the
+// root widget rebuild when onboarding completes or data is reset.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/layout/walletLayoutPage.dart';
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/expense_model.dart';
@@ -30,7 +36,11 @@ class AppConfig {
   });
 }
 
-/// Global notifier — update this to trigger a full ProviderScope rebuild.
+/// Holds the bootstrapped app state. Updating this value triggers a full
+/// ProviderScope rebuild via [ValueListenableBuilder] in [AppRoot], which is
+/// the mechanism used both after onboarding completes and after a data reset.
+/// A [ValueNotifier] is used (instead of a Riverpod provider) because the
+/// notifier must be readable before the first ProviderScope is mounted.
 final appConfigNotifier = ValueNotifier<AppConfig?>(null);
 
 // ── Entry point ───────────────────────────────────────────────────────────────
@@ -98,6 +108,9 @@ class AppRoot extends StatelessWidget {
           ]);
         }
 
+        // ValueKey forces Flutter to tear down and recreate the ProviderScope
+        // (and all its providers) whenever isSetup toggles — e.g. after
+        // onboarding finishes or after a full data reset.
         return ScreenUtilInit(
           designSize: const Size(390, 844),
           minTextAdapt: true,

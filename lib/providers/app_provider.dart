@@ -7,10 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
+// Tracks the currently selected bottom-nav index (0 = Salary Day, 1 = Home …).
 final navIndexProvider = StateProvider<int>((ref) => 1);
 
 // ── Database ──────────────────────────────────────────────────────────────────
 
+// All providers here are seeded with `throw UnimplementedError()` as a
+// placeholder. main.dart overrides them via ProviderScope(overrides: [...])
+// once real data has been loaded from SQLite.
 final dbProvider =
     Provider<AppDatabase>((ref) => throw UnimplementedError());
 
@@ -67,6 +71,11 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
   }
 
   /// Returns false if the source account has insufficient funds.
+  ///
+  /// Optimistic update: state is written first so the UI reflects the new
+  /// balances immediately, then the two balance rows and both transaction
+  /// records are persisted. If the DB write fails the app will restart with
+  /// stale state, but that is acceptable given the local-only nature of the DB.
   Future<bool> transfer({
     required int fromId,
     required int toId,
@@ -126,6 +135,9 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     ];
   }
 
+  /// Deletes a custom account.
+  /// When [transferToWallet] is true, the account's remaining balance is swept
+  /// into the wallet before deletion so no money is "lost" from the total.
   Future<void> deleteCustomAccount(int accountId,
       {bool transferToWallet = false}) async {
     if (transferToWallet) {
@@ -153,6 +165,7 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
         ];
       }
     }
+    // deleteAccount also removes all transaction history for this account.
     await _db.deleteAccount(accountId);
     state = state.where((a) => a.id != accountId).toList();
   }

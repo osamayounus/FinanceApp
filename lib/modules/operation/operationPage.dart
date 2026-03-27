@@ -1,3 +1,9 @@
+// ── OperationPage ─────────────────────────────────────────────────────────────
+// Three-step wizard for depositing or withdrawing from any account:
+//   Step 0 – pick the target account
+//   Step 1 – choose operation type (Deposit / Withdraw)
+//   Step 2 – enter amount + optional title/note, then confirm
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
@@ -5,7 +11,6 @@ import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
-import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

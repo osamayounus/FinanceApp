@@ -1,3 +1,9 @@
+// ── OnboardingPage ────────────────────────────────────────────────────────────
+// First-run setup wizard shown when the app has no saved user data.
+// Collects name, salary amount, salary day, monthly budget, savings
+// percentage, and preferred currency. On completion writes a UserModel to
+// SQLite and updates appConfigNotifier to mount the main app shell.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
 import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/providers/app_provider.dart';

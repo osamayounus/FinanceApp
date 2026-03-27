@@ -1,3 +1,7 @@
+// ── CustomAccountCard ─────────────────────────────────────────────────────────
+// User-created account swiper card. Renders the account's chosen gradient,
+// icon, and name. Tapping ⋮ opens the CustomAccountDetailPage for editing.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/modules/home/cards/customAccountDetailPage.dart';

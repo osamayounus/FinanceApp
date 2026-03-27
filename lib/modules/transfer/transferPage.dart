@@ -1,3 +1,9 @@
+// ── TransferPage ──────────────────────────────────────────────────────────────
+// Three-step wizard for moving funds between any two accounts:
+//   Step 0 – pick FROM account
+//   Step 1 – pick TO account (excludes FROM selection)
+//   Step 2 – enter amount + optional title/note, then confirm
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
@@ -29,6 +35,8 @@ class TransferPage extends ConsumerStatefulWidget {
 }
 
 class _TransferPageState extends ConsumerState<TransferPage> {
+  // IDs of the selected source and destination accounts.
+  // Initialised to Wallet → Savings as the most common transfer direction.
   late int _fromId;
   late int _toId;
 

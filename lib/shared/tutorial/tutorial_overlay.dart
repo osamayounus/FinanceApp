@@ -1,3 +1,9 @@
+// ── tutorial_overlay.dart ─────────────────────────────────────────────────────
+// Fullscreen tutorial overlay driven by a list of TutorialStep objects.
+// Each step spotlights a widget via GlobalKey, draws a dark scrim with a
+// cutout, and shows a positioned speech-bubble tooltip. Tapping anywhere
+// advances to the next step; the overlay removes itself when steps are done.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:flutter/material.dart';
 

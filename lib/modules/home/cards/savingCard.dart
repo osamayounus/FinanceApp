@@ -1,3 +1,7 @@
+// ── SavingCard ────────────────────────────────────────────────────────────────
+// Savings account swiper card. Shows the current Savings balance with a
+// quick-link button to Transaction History.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
@@ -31,6 +35,7 @@ class SavingCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
+            // ── Background decoration circles ───────────────────────────────
             Positioned(
                 top: -28,
                 right: -18,
@@ -52,6 +57,7 @@ class SavingCard extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── Header row: icon + account name ─────────────────────
                   Row(
                     children: [
                       Container(
@@ -83,6 +89,7 @@ class SavingCard extends ConsumerWidget {
 
                   const Spacer(),
 
+                  // ── Balance label + amount + currency ─────────────────
                   Text(
                     AppStrings.balance,
                     style: TextStyle(
@@ -124,6 +131,7 @@ class SavingCard extends ConsumerWidget {
 
                   const Spacer(),
 
+                  // ── Action button: History ───────────────────────────
                   CardActionButton(
                     label: AppStrings.history,
                     icon: Icons.history_rounded,

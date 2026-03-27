@@ -7,11 +7,15 @@ import 'package:financeapp/models/user_model.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+/// Singleton data-access layer for the local SQLite database.
+/// All reads/writes go through this class; no raw SQL lives elsewhere.
 class AppDatabase {
   static AppDatabase? _instance;
   static Database? _db;
 
   AppDatabase._();
+
+  /// Returns the process-wide singleton. Created lazily on first access.
   static AppDatabase get instance => _instance ??= AppDatabase._();
 
   Future<Database> get database async {
@@ -21,6 +25,8 @@ class AppDatabase {
   }
 
   Future<Database> _openDB() async {
+    // sqflite only ships a native plugin for Android/iOS. On desktop we must
+    // swap in the FFI implementation before any database calls are made.
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -35,6 +41,9 @@ class AppDatabase {
     );
   }
 
+  /// Additive migration strategy: each version gate only adds columns/tables,
+  /// never drops anything, so upgrades can safely skip versions
+  /// (e.g. v1 → v5 runs all four blocks sequentially).
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('''
@@ -45,14 +54,17 @@ class AppDatabase {
       ''');
     }
     if (oldVersion < 3) {
+      // Custom account metadata added in v3
       await db.execute('ALTER TABLE accounts ADD COLUMN custom_name TEXT');
       await db.execute('ALTER TABLE accounts ADD COLUMN color_index INTEGER');
       await db.execute('ALTER TABLE accounts ADD COLUMN icon_code INTEGER');
     }
     if (oldVersion < 4) {
+      // Bill category tagging added in v4
       await db.execute("ALTER TABLE bills ADD COLUMN category TEXT NOT NULL DEFAULT ''");
     }
     if (oldVersion < 5) {
+      // Per-user currency preference added in v5; defaults to JOD for existing installs
       await db.execute("ALTER TABLE user ADD COLUMN currency TEXT NOT NULL DEFAULT 'JOD'");
     }
   }
@@ -215,6 +227,8 @@ class AppDatabase {
 
   Future<void> deleteAccount(int id) async {
     final db = await database;
+    // Wrap in a transaction so the account row and its history are deleted
+    // atomically — a partial delete would leave orphaned transaction records.
     await db.transaction((txn) async {
       await txn.delete('transactions', where: 'account_id = ?', whereArgs: [id]);
       await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
@@ -293,7 +307,15 @@ class AppDatabase {
 
   // ── Salary Day ────────────────────────────────────────────────────────────
 
-  /// Returns updated {wallet, budget} balances after processing salary day.
+  /// Executes the salary-day flow atomically in 5 steps:
+  ///   1. Sweep any remaining budget balance into the wallet (rollover).
+  ///   2. Credit the net income (salary − budget) to the wallet.
+  ///   3. Reset the budget account back to [monthlyBudget].
+  ///   4. Persist both updated balances.
+  ///   5. Mark all bills as unpaid for the new month.
+  ///
+  /// All steps run inside a single SQLite transaction so a crash mid-way
+  /// leaves the database unchanged.
   Future<Map<String, double>> processSalaryDay({
     required double salary,
     required double monthlyBudget,

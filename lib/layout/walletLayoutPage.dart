@@ -1,3 +1,8 @@
+// ── WalletLayoutPage ─────────────────────────────────────────────────────────
+// Root shell shown after onboarding. Hosts the three main pages (Salary Day,
+// Home/Wallet, Profile) inside an IndexedStack so all pages stay mounted and
+// preserve their scroll/state when switching tabs.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/modules/home/homePage.dart';
 import 'package:financeapp/modules/profile/profilePage.dart';
 import 'package:financeapp/modules/salaryDay/salaryDayPage.dart';
@@ -21,10 +26,14 @@ class Walletlayoutpage extends ConsumerWidget {
     final selectedIndex = ref.watch(navIndexProvider);
     return Scaffold(
       extendBody: true,
+      // ── Body ──────────────────────────────────────────────────────────────
+      // IndexedStack keeps all three pages alive simultaneously; switching tabs
+      // is instant because nothing is unmounted or re-initialised.
       body: IndexedStack(
         index: selectedIndex,
         children: _pages,
       ),
+      // ── Bottom navigation bar ─────────────────────────────────────────────
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
