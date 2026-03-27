@@ -29,7 +29,7 @@ class AppDatabase {
     final path = join(dbPath, 'finance.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -48,6 +48,9 @@ class AppDatabase {
       await db.execute('ALTER TABLE accounts ADD COLUMN custom_name TEXT');
       await db.execute('ALTER TABLE accounts ADD COLUMN color_index INTEGER');
       await db.execute('ALTER TABLE accounts ADD COLUMN icon_code INTEGER');
+    }
+    if (oldVersion < 4) {
+      await db.execute("ALTER TABLE bills ADD COLUMN category TEXT NOT NULL DEFAULT ''");
     }
   }
 
@@ -87,7 +90,8 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         amount REAL NOT NULL,
-        is_paid INTEGER NOT NULL DEFAULT 0
+        is_paid INTEGER NOT NULL DEFAULT 0,
+        category TEXT NOT NULL DEFAULT ''
       )
     ''');
     await db.execute('''
@@ -242,20 +246,29 @@ class AppDatabase {
               name: e['name'] as String,
               amount: (e['amount'] as num).toInt(),
               isPaid: (e['is_paid'] as int) == 1,
+              category: e['category'] as String? ?? '',
             ))
         .toList();
   }
 
-  Future<int> insertBill(String name, int amount) async {
+  Future<int> insertBill(String name, int amount, String category) async {
     final db = await database;
-    return db
-        .insert('bills', {'name': name, 'amount': amount.toDouble(), 'is_paid': 0});
+    return db.insert('bills', {
+      'name': name,
+      'amount': amount.toDouble(),
+      'is_paid': 0,
+      'category': category,
+    });
   }
 
-  Future<void> updateBill(int id, String name, int amount) async {
+  Future<void> updateBill(int id, String name, int amount, String category) async {
     final db = await database;
-    await db.update('bills', {'name': name, 'amount': amount.toDouble()},
-        where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'bills',
+      {'name': name, 'amount': amount.toDouble(), 'category': category},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> deleteBill(int id) async {

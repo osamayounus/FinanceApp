@@ -10,6 +10,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// ── Bill categories ───────────────────────────────────────────────────────────
+
+class _Cat {
+  final String name;
+  final IconData icon;
+  final Color color;
+  const _Cat(this.name, this.icon, this.color);
+}
+
+const _kCats = [
+  _Cat('Housing',       Icons.home_rounded,            Color(0xFF7C4DFF)),
+  _Cat('Utilities',     Icons.bolt_rounded,            Color(0xFFFFB300)),
+  _Cat('Subscriptions', Icons.play_circle_rounded,     Color(0xFFE91E63)),
+  _Cat('Transport',     Icons.directions_car_rounded,  Color(0xFF2979FF)),
+  _Cat('Health',        Icons.favorite_rounded,        Color(0xFFE53935)),
+  _Cat('Education',     Icons.school_rounded,          Color(0xFF00BCD4)),
+  _Cat('Food',          Icons.restaurant_rounded,      Color(0xFFFF6D00)),
+  _Cat('Other',         Icons.category_rounded,        Color(0xFF78909C)),
+];
+
+_Cat _catFor(String name) =>
+    _kCats.firstWhere((c) => c.name == name, orElse: () => _kCats.last);
+
+String _displayCat(ExpenseModel e) =>
+    e.category.isEmpty ? 'Other' : e.category;
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 class Fixedexpensespage extends ConsumerStatefulWidget {
   const Fixedexpensespage({super.key});
 
@@ -21,7 +49,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   final _nameCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
 
-  // Keeps track of the currently open slide so we can close it when another opens
+  String? _categoryFilter; // null = All
   VoidCallback? _closeOpenCard;
 
   final _fabKey = GlobalKey();
@@ -48,33 +76,36 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     await db.markTutorialSeen('tutorial_bills');
     if (!mounted) return;
     _tutorialEntry = OverlayEntry(
-        builder: (_) => TutorialOverlay(
-          steps: [
-            const TutorialStep(
-              title: 'Monthly Bills',
-              body: 'Track your fixed monthly expenses here — rent, subscriptions, utilities, and more.',
-            ),
-            TutorialStep(
-              targetKey: _fabKey,
-              title: 'Add a Bill',
-              body: 'Tap + to add a new bill. Each month, mark it as paid and it deducts from your Wallet.',
-              position: TipPosition.above,
-            ),
-            const TutorialStep(
-              title: 'Swipe to Manage',
-              body: 'Swipe a bill right to edit it, or left to delete it.\nTap the ✓ icon to mark it as paid.',
-            ),
-          ],
-          onDone: () {
-            _tutorialEntry?.remove();
-            _tutorialEntry = null;
-          },
-        ),
-      );
+      builder: (_) => TutorialOverlay(
+        steps: [
+          const TutorialStep(
+            title: 'Monthly Bills',
+            body:
+                'Track your fixed monthly expenses here — rent, subscriptions, utilities, and more.',
+          ),
+          TutorialStep(
+            targetKey: _fabKey,
+            title: 'Add a Bill',
+            body:
+                'Tap + to add a new bill. Each month, mark it as paid and it deducts from your Wallet.',
+            position: TipPosition.above,
+          ),
+          const TutorialStep(
+            title: 'Swipe to Manage',
+            body:
+                'Swipe a bill right to edit it, or left to delete it.\nTap the ✓ icon to mark it as paid.',
+          ),
+        ],
+        onDone: () {
+          _tutorialEntry?.remove();
+          _tutorialEntry = null;
+        },
+      ),
+    );
     Overlay.of(context).insert(_tutorialEntry!);
   }
 
-  // ── Single edit/add bottom sheet ────────────────────────────────────────────
+  // ── Add / Edit bottom sheet ──────────────────────────────────────────────────
   void _showBottomSheet({ExpenseModel? item, int? index}) {
     if (item != null) {
       _nameCtrl.text = item.name;
@@ -83,79 +114,154 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       _nameCtrl.clear();
       _amountCtrl.clear();
     }
+    String sheetCat = item?.category ?? '';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Padding(
-        // Fix: read viewInsets from ctx (sheet context), not page context
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXXL)),
-          ),
-          padding: EdgeInsets.fromLTRB(
-              AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              SizedBox(height: AppSizes.l),
-              Text(
-                item == null ? 'Add Bill' : 'Edit Bill',
-                style: TextStyle(
-                  fontFamily: 'Rubik',
-                  fontSize: AppSizes.fontXXL,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              SizedBox(height: AppSizes.l),
-              _field(_nameCtrl, 'Bill Name'),
-              SizedBox(height: AppSizes.m),
-              _field(_amountCtrl, 'Amount (JOD)', isNumber: true),
-              SizedBox(height: AppSizes.l),
-              Row(
-                children: [
-                  Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
-                  SizedBox(width: AppSizes.s + 4),
-                  Expanded(
-                    child: _primaryBtn(
-                      item == null ? 'Add' : 'Save',
-                      () {
-                        final name = _nameCtrl.text.trim();
-                        final amount =
-                            int.tryParse(_amountCtrl.text.trim()) ?? 0;
-                        if (name.isEmpty || amount <= 0) return;
-                        if (item == null) {
-                          ref.read(expensesProvider.notifier).add(name, amount);
-                        } else {
-                          ref
-                              .read(expensesProvider.notifier)
-                              .edit(index!, name, amount);
-                        }
-                        Navigator.pop(ctx);
-                      },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppSizes.radiusXXL)),
+            ),
+            padding: EdgeInsets.fromLTRB(
+                AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                SizedBox(height: AppSizes.l),
+
+                // Title
+                Text(
+                  item == null ? 'Add Bill' : 'Edit Bill',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontXXL,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                SizedBox(height: AppSizes.l),
+
+                // Bill name
+                _field(_nameCtrl, 'Bill Name'),
+                SizedBox(height: AppSizes.m),
+
+                // Amount
+                _field(_amountCtrl, 'Amount (JOD)', isNumber: true),
+                SizedBox(height: AppSizes.l),
+
+                // Category label
+                Text(
+                  'CATEGORY',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontXS,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                SizedBox(height: AppSizes.s),
+
+                // Category chips grid
+                Wrap(
+                  spacing: AppSizes.s,
+                  runSpacing: AppSizes.s,
+                  children: _kCats.map((cat) {
+                    final sel = sheetCat == cat.name ||
+                        (sheetCat.isEmpty && cat.name == 'Other');
+                    return GestureDetector(
+                      onTap: () => setSheetState(
+                          () => sheetCat = cat.name == 'Other' ? '' : cat.name),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppSizes.m, vertical: AppSizes.s),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? cat.color.withValues(alpha: 0.12)
+                              : const Color(0xFFF2F3F7),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusL),
+                          border: Border.all(
+                            color: sel ? cat.color : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(cat.icon,
+                                color: sel ? cat.color : Colors.grey[400],
+                                size: AppSizes.iconS),
+                            SizedBox(width: AppSizes.xs + 2),
+                            Text(
+                              cat.name,
+                              style: TextStyle(
+                                fontFamily: 'Rubik',
+                                fontSize: AppSizes.fontXS,
+                                fontWeight: FontWeight.w600,
+                                color: sel ? cat.color : Colors.grey[400],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                SizedBox(height: AppSizes.l),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
+                    SizedBox(width: AppSizes.s + 4),
+                    Expanded(
+                      child: _primaryBtn(
+                        item == null ? 'Add' : 'Save',
+                        () {
+                          final name = _nameCtrl.text.trim();
+                          final amount =
+                              int.tryParse(_amountCtrl.text.trim()) ?? 0;
+                          if (name.isEmpty || amount <= 0) return;
+                          if (item == null) {
+                            ref
+                                .read(expensesProvider.notifier)
+                                .add(name, amount, sheetCat);
+                          } else {
+                            ref
+                                .read(expensesProvider.notifier)
+                                .edit(index!, name, amount, sheetCat);
+                          }
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -227,7 +333,15 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       AppToast.error(messenger, 'Insufficient wallet balance');
                       return;
                     }
-                    await ref.read(expensesProvider.notifier).markPaid(index);
+                    // Find the real index in the full list
+                    final allBills = ref.read(expensesProvider);
+                    final realIndex =
+                        allBills.indexWhere((b) => b.id == bill.id);
+                    if (realIndex != -1) {
+                      await ref
+                          .read(expensesProvider.notifier)
+                          .markPaid(realIndex);
+                    }
                     AppToast.success(
                         messenger, '${bill.name} paid · - ${bill.amount} JOD');
                   }, color: AppColors.myGreen),
@@ -271,8 +385,8 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dCtx, false),
-                child: Text('Cancel',
-                    style: TextStyle(color: Colors.grey[500])),
+                child:
+                    Text('Cancel', style: TextStyle(color: Colors.grey[500])),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(dCtx, true),
@@ -310,8 +424,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             color: AppColors.primary),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle:
-              TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+          labelStyle: TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
           filled: true,
           fillColor: Colors.transparent,
           border: OutlineInputBorder(
@@ -320,8 +433,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusL),
-            borderSide:
-                const BorderSide(color: AppColors.primary, width: 2),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           contentPadding: EdgeInsets.symmetric(
               horizontal: AppSizes.m, vertical: AppSizes.m),
@@ -369,10 +481,26 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   @override
   Widget build(BuildContext context) {
     final expenses = ref.watch(expensesProvider);
+
+    // Collect used categories in predefined order
+    final usedCatNames = _kCats
+        .map((c) => c.name)
+        .where((n) => expenses.any((e) => _displayCat(e) == n))
+        .toList();
+    final showFilter = usedCatNames.length >= 2;
+
+    // Filter
+    final filtered = _categoryFilter == null
+        ? expenses
+        : expenses
+            .where((e) => _displayCat(e) == _categoryFilter)
+            .toList();
+
+    // Summary (always all bills)
     final paidCount = expenses.where((e) => e.isPaid).length;
-    final totalAmount = expenses.fold<int>(0, (sum, e) => sum + e.amount);
+    final totalAmount = expenses.fold<int>(0, (s, e) => s + e.amount);
     final paidAmount =
-        expenses.where((e) => e.isPaid).fold<int>(0, (sum, e) => sum + e.amount);
+        expenses.where((e) => e.isPaid).fold<int>(0, (s, e) => s + e.amount);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
@@ -429,10 +557,10 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             )
           : Column(
               children: [
-                // ── Summary header ─────────────────────────────────
+                // ── Summary ─────────────────────────────────────────
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                      AppSizes.m, 0, AppSizes.m, AppSizes.m),
+                      AppSizes.m, 0, AppSizes.m, AppSizes.s),
                   child: Container(
                     padding: EdgeInsets.symmetric(
                         horizontal: AppSizes.m, vertical: AppSizes.m),
@@ -450,73 +578,105 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                     child: Row(
                       children: [
                         _summaryTile(
-                          label: 'Total',
-                          value: '$totalAmount JOD',
-                          color: AppColors.primary,
-                        ),
+                            label: 'Total',
+                            value: '$totalAmount JOD',
+                            color: AppColors.primary),
                         _vDivider(),
                         _summaryTile(
-                          label: 'Paid',
-                          value: '$paidAmount JOD',
-                          color: AppColors.myGreen,
-                        ),
+                            label: 'Paid',
+                            value: '$paidAmount JOD',
+                            color: AppColors.myGreen),
                         _vDivider(),
                         _summaryTile(
-                          label: 'Remaining',
-                          value: '${totalAmount - paidAmount} JOD',
-                          color: AppColors.myRed,
-                        ),
+                            label: 'Remaining',
+                            value: '${totalAmount - paidAmount} JOD',
+                            color: AppColors.myRed),
                         _vDivider(),
                         _summaryTile(
-                          label: 'Done',
-                          value: '$paidCount / ${expenses.length}',
-                          color: Colors.blueAccent,
-                        ),
+                            label: 'Done',
+                            value: '$paidCount / ${expenses.length}',
+                            color: Colors.blueAccent),
                       ],
                     ),
                   ),
                 ),
 
-                // ── List ───────────────────────────────────────────
-                Expanded(
-                  child: ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: AppSizes.m),
-                    itemCount: expenses.length,
-                    itemBuilder: (context, index) {
-                      final item = expenses[index];
-                      return Padding(
-                        key: ValueKey(item.id),
-                        padding:
-                            EdgeInsets.only(bottom: AppSizes.s + 4),
-                        child: _SlidableExpenseCard(
-                          item: item,
-                          onOpened: (closeFn) {
-                            _closeOpenCard?.call();
-                            _closeOpenCard = closeFn;
-                          },
-                          onClosed: () => _closeOpenCard = null,
-                          onEdit: () =>
-                              _showBottomSheet(item: item, index: index),
-                          onDelete: () async {
-                            final confirmed = await _confirmDelete(context);
-                            if (confirmed) {
-                              ref
-                                  .read(expensesProvider.notifier)
-                                  .delete(index);
-                            }
-                          },
-                          onTap: item.isPaid
-                              ? null
-                              : () =>
-                                  _showBottomSheet(item: item, index: index),
-                          onCheckTap: item.isPaid
-                              ? null
-                              : () => _showConfirmPaid(index),
-                        ),
-                      );
-                    },
+                // ── Category filter chips ────────────────────────────
+                if (showFilter)
+                  SizedBox(
+                    height: 38,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
+                      children: [
+                        // All chip
+                        _filterChip('All', null, Icons.grid_view_rounded,
+                            Colors.grey, usedCatNames),
+                        ...usedCatNames.map((name) {
+                          final cat = _catFor(name);
+                          return _filterChip(
+                              name, name, cat.icon, cat.color, usedCatNames);
+                        }),
+                      ],
+                    ),
                   ),
+
+                if (showFilter) SizedBox(height: AppSizes.s),
+
+                // ── List ─────────────────────────────────────────────
+                Expanded(
+                  child: filtered.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No bills in this category',
+                            style: TextStyle(
+                                fontFamily: 'Rubik',
+                                fontSize: AppSizes.fontS,
+                                color: Colors.grey[400]),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: AppSizes.m),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, i) {
+                            final item = filtered[i];
+                            // Real index in the full list (for notifier calls)
+                            final realIndex =
+                                expenses.indexWhere((e) => e.id == item.id);
+                            return Padding(
+                              key: ValueKey(item.id),
+                              padding:
+                                  EdgeInsets.only(bottom: AppSizes.s + 4),
+                              child: _SlidableExpenseCard(
+                                item: item,
+                                onOpened: (closeFn) {
+                                  _closeOpenCard?.call();
+                                  _closeOpenCard = closeFn;
+                                },
+                                onClosed: () => _closeOpenCard = null,
+                                onEdit: () => _showBottomSheet(
+                                    item: item, index: realIndex),
+                                onDelete: () async {
+                                  final confirmed =
+                                      await _confirmDelete(context);
+                                  if (confirmed) {
+                                    ref
+                                        .read(expensesProvider.notifier)
+                                        .delete(realIndex);
+                                  }
+                                },
+                                onTap: item.isPaid
+                                    ? null
+                                    : () => _showBottomSheet(
+                                        item: item, index: realIndex),
+                                onCheckTap: item.isPaid
+                                    ? null
+                                    : () => _showConfirmPaid(realIndex),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -530,44 +690,78 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     );
   }
 
-  Widget _summaryTile({
-    required String label,
-    required String value,
-    required Color color,
-  }) =>
-      Expanded(
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontFamily: 'Rubik',
-                fontSize: AppSizes.fontS,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+  Widget _filterChip(String label, String? value, IconData icon, Color color,
+      List<String> usedCats) {
+    final selected = _categoryFilter == value;
+    return GestureDetector(
+      onTap: () => setState(() => _categoryFilter = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: EdgeInsets.only(right: AppSizes.s),
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSizes.m, vertical: AppSizes.xs + 2),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(height: 2),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 14,
+                color: selected
+                    ? Colors.white
+                    : (value == null ? Colors.grey[400] : color)),
+            SizedBox(width: AppSizes.xs + 2),
             Text(
               label,
               style: TextStyle(
                 fontFamily: 'Rubik',
-                fontSize: 10,
-                color: Colors.grey[400],
+                fontSize: AppSizes.fontXS,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : Colors.grey[500],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _summaryTile(
+          {required String label,
+          required String value,
+          required Color color}) =>
+      Expanded(
+        child: Column(
+          children: [
+            Text(value,
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.bold,
+                    color: color)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 10,
+                    color: Colors.grey[400])),
+          ],
+        ),
       );
 
-  Widget _vDivider() => Container(
-        width: 1,
-        height: 32,
-        color: Colors.grey[100],
-      );
+  Widget _vDivider() =>
+      Container(width: 1, height: 32, color: Colors.grey[100]);
 }
 
-// ── Slidable expense card (custom Stack-based, no library) ───────────────────
+// ── Slidable expense card ─────────────────────────────────────────────────────
 
 class _SlidableExpenseCard extends StatefulWidget {
   final ExpenseModel item;
@@ -642,9 +836,6 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
         animation: _ctrl,
         builder: (context, _) {
           final displayOffset = _dragging ? _offset : _anim.value;
-
-          // Outer GestureDetector covers the whole widget area (card + revealed
-          // action region) so drags work regardless of where the finger lands.
           return GestureDetector(
             behavior: HitTestBehavior.translucent,
             onHorizontalDragStart: (_) {
@@ -673,11 +864,9 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
             },
             child: Stack(
               children: [
-                // ── Actions behind card ───────────────────────────────
                 Positioned.fill(
                   child: Row(
                     children: [
-                      // Edit — left side (only for unpaid)
                       if (_canEdit)
                         Expanded(
                           child: GestureDetector(
@@ -688,16 +877,12 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                             child: Container(
                               color: const Color(0xFF1C2D6B),
                               alignment: Alignment.centerLeft,
-                              padding:
-                                  EdgeInsets.only(left: AppSizes.l),
+                              padding: EdgeInsets.only(left: AppSizes.l),
                               child: const _ActionLabel(
-                                icon: Icons.edit_outlined,
-                                label: 'Edit',
-                              ),
+                                  icon: Icons.edit_outlined, label: 'Edit'),
                             ),
                           ),
                         ),
-                      // Delete — right side
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -707,20 +892,16 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                           child: Container(
                             color: const Color(0xFF8B1A1A),
                             alignment: Alignment.centerRight,
-                            padding:
-                                EdgeInsets.only(right: AppSizes.l),
+                            padding: EdgeInsets.only(right: AppSizes.l),
                             child: const _ActionLabel(
-                              icon: Icons.delete_outline_rounded,
-                              label: 'Delete',
-                            ),
+                                icon: Icons.delete_outline_rounded,
+                                label: 'Delete'),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-
-                // ── Card on top — slides ──────────────────────────────
                 Transform.translate(
                   offset: Offset(displayOffset, 0),
                   child: _ExpenseCard(
@@ -739,12 +920,11 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
   }
 }
 
-// ── Small icon + label used inside action buttons ─────────────────────────────
+// ── Action label ──────────────────────────────────────────────────────────────
 
 class _ActionLabel extends StatelessWidget {
   final IconData icon;
   final String label;
-
   const _ActionLabel({required this.icon, required this.label});
 
   @override
@@ -754,36 +934,30 @@ class _ActionLabel extends StatelessWidget {
       children: [
         Icon(icon, color: Colors.white, size: AppSizes.iconM),
         SizedBox(height: AppSizes.xs),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: AppSizes.fontXS,
-            fontFamily: 'Rubik',
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label,
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: AppSizes.fontXS,
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.bold)),
       ],
     );
   }
 }
 
-// ── Expense card widget ───────────────────────────────────────────────────────
+// ── Expense card ──────────────────────────────────────────────────────────────
 
 class _ExpenseCard extends StatelessWidget {
   final ExpenseModel item;
   final VoidCallback? onTap;
   final VoidCallback? onCheckTap;
 
-  const _ExpenseCard({
-    required this.item,
-    this.onTap,
-    this.onCheckTap,
-  });
+  const _ExpenseCard({required this.item, this.onTap, this.onCheckTap});
 
   @override
   Widget build(BuildContext context) {
     final bool paid = item.isPaid;
+    final cat = _catFor(_displayCat(item));
 
     return Material(
       color: Colors.transparent,
@@ -803,8 +977,7 @@ class _ExpenseCard extends StatelessWidget {
             border: paid
                 ? Border.all(
                     color: AppColors.myGreen.withValues(alpha: 0.55),
-                    width: 1.5,
-                  )
+                    width: 1.5)
                 : null,
             boxShadow: [
               BoxShadow(
@@ -820,24 +993,24 @@ class _ExpenseCard extends StatelessWidget {
                 horizontal: AppSizes.m, vertical: AppSizes.m),
             child: Row(
               children: [
-                // Icon
+                // Category icon
                 Container(
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
                     color: paid
                         ? Colors.grey[300]
-                        : Colors.white.withValues(alpha: 0.1),
+                        : cat.color.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(AppSizes.radiusM),
                   ),
                   child: Icon(
-                    Icons.receipt_long_rounded,
-                    color: paid ? Colors.grey[500] : Colors.white70,
+                    cat.icon,
+                    color: paid ? Colors.grey[500] : cat.color,
                     size: AppSizes.iconM,
                   ),
                 ),
                 SizedBox(width: AppSizes.m),
-                // Name + amount
+                // Name + category + amount
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,6 +1022,17 @@ class _ExpenseCard extends StatelessWidget {
                           fontSize: AppSizes.fontM,
                           fontWeight: FontWeight.w600,
                           color: paid ? Colors.grey[500] : Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        cat.name,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontXS,
+                          color: paid
+                              ? Colors.grey[400]
+                              : Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -864,7 +1048,7 @@ class _ExpenseCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Check button
+                // Check
                 GestureDetector(
                   onTap: onCheckTap,
                   child: Container(
