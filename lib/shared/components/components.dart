@@ -5,6 +5,119 @@ import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+// ── Modal handle bar ──────────────────────────────────────────────────────────
+
+class ModalHandle extends StatelessWidget {
+  const ModalHandle({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: AppSizes.handleBarWidth,
+        height: AppSizes.handleBarHeight,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+/// Uppercase section header used above grouped content (e.g. 'PERSONAL INFO').
+class SectionLabel extends StatelessWidget {
+  final String text;
+  const SectionLabel(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(left: AppSizes.xs),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontFamily: 'Rubik',
+          fontSize: AppSizes.fontSection,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          color: Colors.grey[400],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Card background circle ────────────────────────────────────────────────────
+
+/// Decorative translucent circle used in the card background Stack.
+Widget cardBgCircle(double size, double opacity, Color baseColor) => Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: baseColor.withValues(alpha: opacity),
+      ),
+    );
+
+// ── Card action button ────────────────────────────────────────────────────────
+
+/// Button shown at the bottom of account cards (History, Bills, etc.).
+/// Pass [backgroundColor] and [foregroundColor] to match the card theme.
+class CardActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color backgroundColor;
+  final Color foregroundColor;
+
+  const CardActionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.backgroundColor,
+    required this.foregroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(AppSizes.radiusM),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSizes.radiusM),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+                vertical: AppSizes.s + 2, horizontal: AppSizes.s),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: foregroundColor, size: AppSizes.iconS),
+                SizedBox(width: AppSizes.xs + 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: foregroundColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── App Toast ─────────────────────────────────────────────────────────────────
 
 class AppToast {

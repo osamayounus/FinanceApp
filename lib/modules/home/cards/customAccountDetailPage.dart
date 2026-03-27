@@ -1,8 +1,10 @@
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,7 +65,7 @@ class _CustomAccountDetailPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -90,7 +92,7 @@ class _CustomAccountDetailPageState
                     Expanded(
                       child: Text(
                         _nameCtrl.text.trim().isEmpty
-                            ? 'Account Details'
+                            ? AppStrings.accountDetails
                             : _nameCtrl.text.trim(),
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -117,7 +119,7 @@ class _CustomAccountDetailPageState
                     SizedBox(height: AppSizes.s),
 
                     // ── Account name ─────────────────────────────
-                    _sectionLabel('ACCOUNT NAME'),
+                    SectionLabel(AppStrings.sectionAccountName),
                     SizedBox(height: AppSizes.s),
                     Container(
                       decoration: BoxDecoration(
@@ -142,7 +144,7 @@ class _CustomAccountDetailPageState
                           color: AppColors.primary,
                         ),
                         decoration: InputDecoration(
-                          hintText: 'Account name',
+                          hintText: AppStrings.accountName,
                           hintStyle: TextStyle(
                               fontFamily: 'Rubik', color: Colors.grey[400]),
                           border: InputBorder.none,
@@ -154,7 +156,7 @@ class _CustomAccountDetailPageState
                     SizedBox(height: AppSizes.l),
 
                     // ── Color ────────────────────────────────────
-                    _sectionLabel('COLOR'),
+                    SectionLabel(AppStrings.sectionColor),
                     SizedBox(height: AppSizes.s),
                     Container(
                       padding: EdgeInsets.all(AppSizes.m),
@@ -224,7 +226,7 @@ class _CustomAccountDetailPageState
                     SizedBox(height: AppSizes.l),
 
                     // ── Icon ─────────────────────────────────────
-                    _sectionLabel('ICON'),
+                    SectionLabel(AppStrings.sectionIcon),
                     SizedBox(height: AppSizes.s),
                     Container(
                       padding: EdgeInsets.all(AppSizes.m),
@@ -259,7 +261,7 @@ class _CustomAccountDetailPageState
                                   color: selected
                                       ? _currentGradient[0]
                                           .withValues(alpha: 0.12)
-                                      : const Color(0xFFF2F3F7),
+                                      : AppColors.pageBackground,
                                   borderRadius: BorderRadius.circular(
                                       AppSizes.radiusM),
                                   border: selected
@@ -307,7 +309,7 @@ class _CustomAccountDetailPageState
                                     strokeWidth: 2,
                                     color: Colors.white))
                             : Text(
-                                'Save Changes',
+                                AppStrings.saveChanges,
                                 style: TextStyle(
                                   fontFamily: 'Rubik',
                                   fontWeight: FontWeight.bold,
@@ -320,7 +322,7 @@ class _CustomAccountDetailPageState
                     SizedBox(height: AppSizes.l),
 
                     // ── Danger zone ───────────────────────────────
-                    _sectionLabel('DANGER ZONE'),
+                    SectionLabel(AppStrings.sectionDangerZone),
                     SizedBox(height: AppSizes.s),
                     Container(
                       decoration: BoxDecoration(
@@ -367,7 +369,7 @@ class _CustomAccountDetailPageState
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text('Delete Account',
+                                      Text(AppStrings.deleteAccount,
                                           style: TextStyle(
                                             fontFamily: 'Rubik',
                                             fontSize: AppSizes.fontM,
@@ -375,7 +377,7 @@ class _CustomAccountDetailPageState
                                             color: Colors.redAccent,
                                           )),
                                       SizedBox(height: 2),
-                                      Text('Remove this account permanently',
+                                      Text(AppStrings.removeAccountSubtitle,
                                           style: TextStyle(
                                             fontFamily: 'Rubik',
                                             fontSize: AppSizes.fontXS,
@@ -403,20 +405,6 @@ class _CustomAccountDetailPageState
     );
   }
 
-  Widget _sectionLabel(String label) => Padding(
-        padding: EdgeInsets.only(left: AppSizes.xs),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Rubik',
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.4,
-            color: Colors.grey[400],
-          ),
-        ),
-      );
-
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
@@ -442,7 +430,7 @@ class _CustomAccountDetailPageState
         builder: (ctx) => AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
-          title: const Text('Delete Account',
+          title: const Text(AppStrings.deleteAccount,
               style: TextStyle(
                   fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
           content: Text(
@@ -452,7 +440,7 @@ class _CustomAccountDetailPageState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Cancel',
+              child: Text(AppStrings.cancel,
                   style: TextStyle(
                       fontFamily: 'Rubik', color: Colors.grey[500])),
             ),
@@ -465,7 +453,7 @@ class _CustomAccountDetailPageState
                         BorderRadius.circular(AppSizes.radiusM)),
               ),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Delete',
+              child: const Text(AppStrings.delete,
                   style: TextStyle(
                       fontFamily: 'Rubik',
                       fontWeight: FontWeight.bold,
@@ -489,7 +477,7 @@ class _CustomAccountDetailPageState
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
-        title: const Text('Delete Account',
+        title: const Text(AppStrings.deleteAccount,
             style: TextStyle(
                 fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
         content: Text(
@@ -504,7 +492,7 @@ class _CustomAccountDetailPageState
             child: ElevatedButton.icon(
               icon: const Icon(Icons.account_balance_wallet_rounded,
                   size: 18, color: Colors.white),
-              label: const Text('Transfer to Wallet',
+              label: const Text(AppStrings.transferToWallet,
                   style: TextStyle(
                       fontFamily: 'Rubik',
                       fontWeight: FontWeight.bold,
@@ -525,7 +513,7 @@ class _CustomAccountDetailPageState
             child: OutlinedButton.icon(
               icon: const Icon(Icons.delete_outline_rounded,
                   size: 18, color: Colors.redAccent),
-              label: const Text('Discard balance',
+              label: const Text(AppStrings.discardBalance,
                   style: TextStyle(
                       fontFamily: 'Rubik',
                       fontWeight: FontWeight.w600,
@@ -543,7 +531,7 @@ class _CustomAccountDetailPageState
           Center(
             child: TextButton(
               onPressed: () => Navigator.pop(ctx, null),
-              child: Text('Cancel',
+              child: Text(AppStrings.cancel,
                   style: TextStyle(
                       fontFamily: 'Rubik', color: Colors.grey[500])),
             ),

@@ -246,7 +246,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
     final double coinSize = screenWidth * 0.62;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Center(
           child: Padding(

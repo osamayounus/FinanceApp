@@ -1,7 +1,9 @@
 import 'package:financeapp/main.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +26,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
           borderRadius: BorderRadius.circular(AppSizes.radiusXL),
         ),
         title: const Text(
-          'Reset App',
+          AppStrings.resetApp,
           style: TextStyle(
             fontFamily: 'Rubik',
             fontWeight: FontWeight.bold,
@@ -32,7 +34,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
           ),
         ),
         content: const Text(
-          'This will erase all your data — accounts, transactions, bills, and settings. You will need to set up the app again.\n\nThis cannot be undone.',
+          AppStrings.resetConfirmBody,
           style: TextStyle(
             fontFamily: 'Rubik',
             height: 1.5,
@@ -42,7 +44,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Cancel',
+              AppStrings.cancel,
               style: TextStyle(
                 fontFamily: 'Rubik',
                 fontWeight: FontWeight.w600,
@@ -60,7 +62,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text(
-              'Reset',
+              AppStrings.reset,
               style: TextStyle(
                 fontFamily: 'Rubik',
                 fontWeight: FontWeight.bold,
@@ -91,7 +93,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     final currency = ref.watch(currencyProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
@@ -103,7 +105,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
               Padding(
                 padding: EdgeInsets.symmetric(vertical: AppSizes.s),
                 child: const Text(
-                  'Profile',
+                  AppStrings.profile,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: 28,
@@ -117,12 +119,10 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
               // ── Avatar card ─────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding:
-                    EdgeInsets.symmetric(vertical: AppSizes.xl),
+                padding: EdgeInsets.symmetric(vertical: AppSizes.xl),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.circular(AppSizes.radiusXL),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -139,7 +139,10 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          colors: [AppColors.primary, Color(0xFF1A1D4A)],
+                          colors: [
+                            AppColors.primary,
+                            AppColors.darkGradientEnd
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -170,7 +173,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                     ),
                     SizedBox(height: AppSizes.xs),
                     Text(
-                      'Personal Account',
+                      AppStrings.personalAccount,
                       style: TextStyle(
                         fontSize: AppSizes.fontS,
                         fontFamily: 'Rubik',
@@ -184,26 +187,15 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
 
               // ── Section label ────────────────────────────────────
               Padding(
-                padding: EdgeInsets.only(
-                    left: AppSizes.xs, bottom: AppSizes.s),
-                child: Text(
-                  'PERSONAL INFO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontFamily: 'Rubik',
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey[400],
-                    letterSpacing: 1.4,
-                  ),
-                ),
+                padding: EdgeInsets.only(bottom: AppSizes.s),
+                child: SectionLabel(AppStrings.sectionPersonalInfo),
               ),
 
               // ── Info rows card ───────────────────────────────────
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.circular(AppSizes.radiusXL),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -216,20 +208,19 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                   children: [
                     _InfoRow(
                       icon: Icons.person_rounded,
-                      iconColor: const Color(0xFF5B6BF8),
-                      iconBg: const Color(0xFFEEF0FF),
-                      label: 'Name',
+                      iconColor: AppColors.blueIcon,
+                      iconBg: AppColors.blueIconBg,
+                      label: AppStrings.name,
                       value: user.name,
                       isFirst: true,
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
-                        title: 'Edit Name',
+                        title: AppStrings.editName,
                         initialValue: user.name,
                         isNumber: false,
-                        onSave: (val) => ref
-                            .read(userProvider.notifier)
-                            .update(name: val),
+                        onSave: (val) =>
+                            ref.read(userProvider.notifier).update(name: val),
                       ),
                     ),
                     _divider(),
@@ -237,12 +228,12 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       icon: Icons.account_balance_wallet_rounded,
                       iconColor: AppColors.myGreen,
                       iconBg: AppColors.myGreen.withValues(alpha: 0.1),
-                      label: 'Monthly Salary',
+                      label: AppStrings.monthlySalary,
                       value: '${user.salary.toInt()} $currency',
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
-                        title: 'Edit Salary',
+                        title: AppStrings.editSalary,
                         initialValue: user.salary.toInt().toString(),
                         isNumber: true,
                         suffix: currency,
@@ -256,20 +247,19 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       icon: Icons.receipt_long_rounded,
                       iconColor: AppColors.myRed,
                       iconBg: AppColors.myRed.withValues(alpha: 0.1),
-                      label: 'Monthly Budget',
+                      label: AppStrings.monthlyBudget,
                       value: '${user.monthlyBudget.toInt()} $currency',
                       isLast: true,
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
-                        title: 'Edit Monthly Budget',
+                        title: AppStrings.editMonthlyBudget,
                         initialValue: user.monthlyBudget.toInt().toString(),
                         isNumber: true,
                         suffix: currency,
                         onSave: (val) => ref
                             .read(userProvider.notifier)
-                            .update(
-                                monthlyBudget: double.tryParse(val)),
+                            .update(monthlyBudget: double.tryParse(val)),
                       ),
                     ),
                   ],
@@ -279,16 +269,18 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
 
               // ── Danger zone label ────────────────────────────────
               Padding(
-                padding: EdgeInsets.only(
-                    left: AppSizes.xs, bottom: AppSizes.s),
-                child: Text(
-                  'DANGER ZONE',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontFamily: 'Rubik',
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.myRed.withValues(alpha: 0.7),
-                    letterSpacing: 1.4,
+                padding: EdgeInsets.only(bottom: AppSizes.s),
+                child: Padding(
+                  padding: EdgeInsets.only(left: AppSizes.xs),
+                  child: Text(
+                    AppStrings.sectionDangerZone,
+                    style: TextStyle(
+                      fontSize: AppSizes.fontSection,
+                      fontFamily: 'Rubik',
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.myRed.withValues(alpha: 0.7),
+                      letterSpacing: 1.4,
+                    ),
                   ),
                 ),
               ),
@@ -297,8 +289,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius:
-                      BorderRadius.circular(AppSizes.radiusXL),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.04),
@@ -311,22 +302,19 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: _resetting ? null : _confirmReset,
-                    borderRadius:
-                        BorderRadius.circular(AppSizes.radiusXL),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusXL),
                     child: Padding(
                       padding: EdgeInsets.symmetric(
-                          horizontal: AppSizes.m,
-                          vertical: AppSizes.m),
+                          horizontal: AppSizes.m, vertical: AppSizes.m),
                       child: Row(
                         children: [
                           Container(
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(
-                              color: AppColors.myRed
-                                  .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                  AppSizes.radiusM),
+                              color: AppColors.myRed.withValues(alpha: 0.1),
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusM),
                             ),
                             child: _resetting
                                 ? Padding(
@@ -345,11 +333,10 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                           SizedBox(width: AppSizes.m),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Reset App Data',
+                                  AppStrings.resetAppData,
                                   style: TextStyle(
                                     fontSize: AppSizes.fontM,
                                     fontFamily: 'Rubik',
@@ -359,7 +346,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Erase everything and start over',
+                                  AppStrings.eraseEverythingSubtitle,
                                   style: TextStyle(
                                     fontSize: AppSizes.fontXS,
                                     fontFamily: 'Rubik',
@@ -387,8 +374,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
 
   Widget _divider() => Padding(
         padding: const EdgeInsets.only(left: 72),
-        child:
-            Divider(height: 1, thickness: 1, color: Colors.grey[100]),
+        child: Divider(height: 1, thickness: 1, color: Colors.grey[100]),
       );
 
   void _showEditSheet({
@@ -407,8 +393,8 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -421,16 +407,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const ModalHandle(),
               SizedBox(height: AppSizes.l),
               Text(
                 title,
@@ -444,16 +421,14 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
               SizedBox(height: AppSizes.l),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF2F3F7),
-                  borderRadius:
-                      BorderRadius.circular(AppSizes.radiusL),
+                  color: AppColors.pageBackground,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusL),
                 ),
                 child: TextField(
                   controller: ctrl,
                   autofocus: true,
-                  keyboardType: isNumber
-                      ? TextInputType.number
-                      : TextInputType.text,
+                  keyboardType:
+                      isNumber ? TextInputType.number : TextInputType.text,
                   inputFormatters: isNumber
                       ? [FilteringTextInputFormatter.digitsOnly]
                       : null,
@@ -490,11 +465,11 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: EdgeInsets.symmetric(
-                            vertical: AppSizes.m),
+                        padding:
+                            EdgeInsets.symmetric(vertical: AppSizes.m),
                       ),
                       child: Text(
-                        'Cancel',
+                        AppStrings.cancel,
                         style: TextStyle(
                           color: Colors.grey[500],
                           fontFamily: 'Rubik',
@@ -520,11 +495,11 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusL),
                         ),
-                        padding: EdgeInsets.symmetric(
-                            vertical: AppSizes.m),
+                        padding:
+                            EdgeInsets.symmetric(vertical: AppSizes.m),
                       ),
                       child: Text(
-                        'Save',
+                        AppStrings.save,
                         style: TextStyle(
                           color: Colors.white,
                           fontFamily: 'Rubik',
@@ -574,12 +549,10 @@ class _InfoRow extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.vertical(
-          top: isFirst
-              ? Radius.circular(AppSizes.radiusXL)
-              : Radius.zero,
-          bottom: isLast
-              ? Radius.circular(AppSizes.radiusXL)
-              : Radius.zero,
+          top:
+              isFirst ? Radius.circular(AppSizes.radiusXL) : Radius.zero,
+          bottom:
+              isLast ? Radius.circular(AppSizes.radiusXL) : Radius.zero,
         ),
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -591,11 +564,9 @@ class _InfoRow extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius:
-                      BorderRadius.circular(AppSizes.radiusM),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusM),
                 ),
-                child:
-                    Icon(icon, color: iconColor, size: AppSizes.iconM),
+                child: Icon(icon, color: iconColor, size: AppSizes.iconM),
               ),
               SizedBox(width: AppSizes.m),
               Expanded(

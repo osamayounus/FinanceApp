@@ -33,4 +33,11 @@ class AppSizes {
   static double get fontXL => 20.sp;
   static double get fontXXL => 22.sp;
   static double get fontTitle => 30.sp;
+  static double get fontSection => 11.sp; // uppercase section headers
+
+  // Specific component sizes
+  static double get cardBalanceSize => 38.sp; // large balance number in cards
+  static double get handleBarWidth => 40.r;   // modal bottom sheet handle
+  static double get handleBarHeight => 4.r;
+  static double get cardIconBoxSize => 36.r;  // icon container in card header
 }

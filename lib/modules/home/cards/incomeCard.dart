@@ -2,9 +2,10 @@ import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/fixedExp/FixedExpensesPage.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
-import 'package:financeapp/shared/utils/currency.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,7 +25,7 @@ class IncomeCard extends ConsumerWidget {
       child: Container(
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFFF4F5FB), Color(0xFFE8EAF6)],
+            colors: [AppColors.walletCardStart, AppColors.walletCardEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -38,9 +39,18 @@ class IncomeCard extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            Positioned(top: -28, right: -18, child: _circle(130, 0.18)),
-            Positioned(top: 18, right: 52, child: _circle(70, 0.12)),
-            Positioned(bottom: -40, left: -20, child: _circle(110, 0.10)),
+            Positioned(
+                top: -28,
+                right: -18,
+                child: cardBgCircle(130, 0.18, AppColors.primary)),
+            Positioned(
+                top: 18,
+                right: 52,
+                child: cardBgCircle(70, 0.12, AppColors.primary)),
+            Positioned(
+                bottom: -40,
+                left: -20,
+                child: cardBgCircle(110, 0.10, AppColors.primary)),
 
             Padding(
               padding: EdgeInsets.symmetric(
@@ -53,8 +63,8 @@ class IncomeCard extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: AppSizes.cardIconBoxSize,
+                        height: AppSizes.cardIconBoxSize,
                         decoration: BoxDecoration(
                           color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius:
@@ -68,7 +78,7 @@ class IncomeCard extends ConsumerWidget {
                       ),
                       SizedBox(width: AppSizes.s),
                       Text(
-                        'Wallet',
+                        AppStrings.wallet,
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontS,
@@ -82,7 +92,7 @@ class IncomeCard extends ConsumerWidget {
                   const Spacer(),
 
                   Text(
-                    'Balance',
+                    AppStrings.balance,
                     style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: AppSizes.fontXS,
@@ -100,9 +110,9 @@ class IncomeCard extends ConsumerWidget {
                         balance % 1 == 0
                             ? '${balance.toInt()}'
                             : balance.toStringAsFixed(2),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Rubik',
-                          fontSize: 38,
+                          fontSize: AppSizes.cardBalanceSize,
                           fontWeight: FontWeight.w900,
                           color: AppColors.primary,
                         ),
@@ -125,15 +135,18 @@ class IncomeCard extends ConsumerWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _CardButton(
-                          label: 'History',
+                        child: CardActionButton(
+                          label: AppStrings.history,
                           icon: Icons.history_rounded,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.07),
+                          foregroundColor: AppColors.primary,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const Historypage(
                                 accountId: kWalletId,
-                                accountName: 'Wallet',
+                                accountName: AppStrings.wallet,
                               ),
                             ),
                           ),
@@ -141,9 +154,12 @@ class IncomeCard extends ConsumerWidget {
                       ),
                       SizedBox(width: AppSizes.s),
                       Expanded(
-                        child: _CardButton(
-                          label: 'Bills',
+                        child: CardActionButton(
+                          label: AppStrings.bills,
                           icon: Icons.receipt_long_rounded,
+                          backgroundColor:
+                              AppColors.primary.withValues(alpha: 0.07),
+                          foregroundColor: AppColors.primary,
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -157,59 +173,6 @@ class IncomeCard extends ConsumerWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-Widget _circle(double size, double opacity) => Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primary.withValues(alpha: opacity),
-      ),
-    );
-
-class _CardButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CardButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.primary.withValues(alpha: 0.07),
-      borderRadius: BorderRadius.circular(AppSizes.radiusM),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSizes.radiusM),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-              vertical: AppSizes.s + 2, horizontal: AppSizes.s),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.primary, size: AppSizes.iconS),
-              SizedBox(width: AppSizes.xs + 2),
-              Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'Rubik',
-                  fontSize: AppSizes.fontS,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

@@ -1,8 +1,10 @@
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/modules/history/historyPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
-import 'package:financeapp/shared/utils/currency.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,16 +24,25 @@ class SavingCard extends ConsumerWidget {
       child: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF00A87A), Color(0xFF007A58)],
+            colors: [AppColors.savingsCardStart, AppColors.savingsCardEnd],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Stack(
           children: [
-            Positioned(top: -28, right: -18, child: _circle(130, 0.15)),
-            Positioned(top: 18, right: 52, child: _circle(70, 0.10)),
-            Positioned(bottom: -40, left: -20, child: _circle(110, 0.08)),
+            Positioned(
+                top: -28,
+                right: -18,
+                child: cardBgCircle(130, 0.15, Colors.white)),
+            Positioned(
+                top: 18,
+                right: 52,
+                child: cardBgCircle(70, 0.10, Colors.white)),
+            Positioned(
+                bottom: -40,
+                left: -20,
+                child: cardBgCircle(110, 0.08, Colors.white)),
 
             Padding(
               padding: EdgeInsets.symmetric(
@@ -44,8 +55,8 @@ class SavingCard extends ConsumerWidget {
                   Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: AppSizes.cardIconBoxSize,
+                        height: AppSizes.cardIconBoxSize,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius:
@@ -59,7 +70,7 @@ class SavingCard extends ConsumerWidget {
                       ),
                       SizedBox(width: AppSizes.s),
                       Text(
-                        'Savings',
+                        AppStrings.savings,
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontS,
@@ -73,7 +84,7 @@ class SavingCard extends ConsumerWidget {
                   const Spacer(),
 
                   Text(
-                    'Balance',
+                    AppStrings.balance,
                     style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: AppSizes.fontXS,
@@ -91,9 +102,9 @@ class SavingCard extends ConsumerWidget {
                         balance % 1 == 0
                             ? '${balance.toInt()}'
                             : balance.toStringAsFixed(2),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Rubik',
-                          fontSize: 38,
+                          fontSize: AppSizes.cardBalanceSize,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                         ),
@@ -113,15 +124,17 @@ class SavingCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  _CardButton(
-                    label: 'History',
+                  CardActionButton(
+                    label: AppStrings.history,
                     icon: Icons.history_rounded,
+                    backgroundColor: Colors.white.withValues(alpha: 0.22),
+                    foregroundColor: Colors.white,
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => const Historypage(
                           accountId: kSavingsId,
-                          accountName: 'Savings',
+                          accountName: AppStrings.savings,
                         ),
                       ),
                     ),
@@ -130,62 +143,6 @@ class SavingCard extends ConsumerWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-Widget _circle(double size, double opacity) => Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
-      ),
-    );
-
-class _CardButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CardButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(AppSizes.radiusM),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppSizes.radiusM),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-                vertical: AppSizes.s + 2, horizontal: AppSizes.s),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, color: Colors.white, size: AppSizes.iconS),
-                SizedBox(width: AppSizes.xs + 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: AppSizes.fontS,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,9 +54,9 @@ class _TransferPageState extends ConsumerState<TransferPage> {
   List<_Acc> _buildAccounts() {
     final accounts = ref.read(accountsProvider);
     return [
-      const _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
-      const _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
-      const _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
+      const _Acc(kWalletId, AppStrings.wallet, Icons.account_balance_wallet_rounded),
+      const _Acc(kSavingsId, AppStrings.savings, Icons.savings_rounded),
+      const _Acc(kBudgetId, AppStrings.monthlyBudget, Icons.receipt_long_rounded),
       ...accounts.where((a) => a.isCustom).map((a) => _Acc(
             a.id,
             a.displayName,
@@ -73,7 +74,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _AccountPickerSheet(
-        title: isFrom ? 'Transfer From' : 'Transfer To',
+        title: isFrom ? AppStrings.transferFrom : AppStrings.transferTo,
         currentId: currentId,
         accounts: accList,
       ),
@@ -109,13 +110,13 @@ class _TransferPageState extends ConsumerState<TransferPage> {
     final messenger = ScaffoldMessenger.of(context);
 
     if (amount <= 0) {
-      AppToast.error(messenger, 'Enter a valid amount');
+      AppToast.error(messenger, AppStrings.enterValidAmount);
       return;
     }
 
     final title = _titleCtrl.text.trim().isNotEmpty
         ? _titleCtrl.text.trim()
-        : 'Transfer';
+        : AppStrings.transfer;
     final note = _noteCtrl.text.trim();
     final now = DateTime.now();
     final amountStr = amount % 1 == 0
@@ -169,9 +170,9 @@ class _TransferPageState extends ConsumerState<TransferPage> {
     final currency = ref.watch(currencyProvider);
     final allAccounts = ref.watch(accountsProvider);
     final accList = [
-      const _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
-      const _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
-      const _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
+      const _Acc(kWalletId, AppStrings.wallet, Icons.account_balance_wallet_rounded),
+      const _Acc(kSavingsId, AppStrings.savings, Icons.savings_rounded),
+      const _Acc(kBudgetId, AppStrings.monthlyBudget, Icons.receipt_long_rounded),
       ...allAccounts.where((a) => a.isCustom).map((a) => _Acc(
             a.id,
             a.displayName,
@@ -187,7 +188,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
         allAccounts.firstWhere((a) => a.id == _fromId).balance;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -198,7 +199,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Transfer',
+          AppStrings.transfer,
           style: TextStyle(
             fontFamily: 'Rubik',
             fontSize: AppSizes.fontXXL,
@@ -214,13 +215,13 @@ class _TransferPageState extends ConsumerState<TransferPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── From / To card ─────────────────────────────────────
-            _SectionLabel('Accounts'),
+            SectionLabel(AppStrings.sectionAccounts),
             SizedBox(height: AppSizes.s),
             _card(
               child: Column(
                 children: [
                   _AccountRow(
-                    label: 'From',
+                    label: AppStrings.from,
                     account: fromAcc,
                     onTap: () => _pickAccount(isFrom: true),
                   ),
@@ -238,7 +239,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF2F3F7),
+                            color: AppColors.pageBackground,
                             shape: BoxShape.circle,
                             border: Border.all(
                                 color: Colors.grey[200]!, width: 1.5),
@@ -253,7 +254,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                     ],
                   ),
                   _AccountRow(
-                    label: 'To',
+                    label: AppStrings.to,
                     account: toAcc,
                     onTap: () => _pickAccount(isFrom: false),
                   ),
@@ -264,7 +265,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
             SizedBox(height: AppSizes.m),
 
             // ── Amount card ─────────────────────────────────────────
-            _SectionLabel('Amount'),
+            SectionLabel(AppStrings.sectionAmount),
             SizedBox(height: AppSizes.s),
             _card(
               child: Padding(
@@ -375,7 +376,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
             SizedBox(height: AppSizes.m),
 
             // ── Details card ────────────────────────────────────────
-            _SectionLabel('Details'),
+            SectionLabel(AppStrings.sectionDetails),
             SizedBox(height: AppSizes.s),
             _card(
               child: Padding(
@@ -385,14 +386,14 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                   children: [
                     _DetailField(
                       controller: _titleCtrl,
-                      label: 'Title (optional)',
+                      label: AppStrings.titleOptional,
                       hint: 'e.g. Moving to savings',
                       icon: Icons.label_outline_rounded,
                     ),
                     SizedBox(height: AppSizes.s),
                     _DetailField(
                       controller: _noteCtrl,
-                      label: 'Note (optional)',
+                      label: AppStrings.noteOptional,
                       hint: 'Additional details...',
                       icon: Icons.notes_rounded,
                     ),
@@ -441,7 +442,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                           BorderRadius.circular(AppSizes.radiusXL)),
                 ),
                 child: Text(
-                  'Confirm Transfer',
+                  AppStrings.confirmTransfer,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontM,
@@ -475,23 +476,6 @@ Widget _card({required Widget child}) => Container(
       ),
       child: child,
     );
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontFamily: 'Rubik',
-          fontSize: AppSizes.fontXS,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1,
-          color: Colors.grey[400],
-        ),
-      );
-}
 
 class _AccountRow extends StatelessWidget {
   final String label;
@@ -576,7 +560,7 @@ class _DetailField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
+        color: AppColors.pageBackground,
         borderRadius: BorderRadius.circular(AppSizes.radiusL),
       ),
       child: TextField(

@@ -4,6 +4,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -61,13 +62,13 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     final messenger = ScaffoldMessenger.of(context);
 
     if (amount <= 0) {
-      AppToast.error(messenger, 'Enter a valid amount');
+      AppToast.error(messenger, AppStrings.enterValidAmount);
       return;
     }
 
     final title = _titleCtrl.text.trim().isNotEmpty
         ? _titleCtrl.text.trim()
-        : (_operation == 'deposit' ? 'Deposit' : 'Withdraw');
+        : (_operation == 'deposit' ? AppStrings.deposit : AppStrings.withdraw);
     final note = _noteCtrl.text.trim();
     final isDeposit = _operation == 'deposit';
     final amountStr = amount % 1 == 0
@@ -221,7 +222,7 @@ class _StepAccount extends StatelessWidget {
           _BackButton(onBack: onBack),
           SizedBox(height: AppSizes.l),
           Text(
-            'Choose the account',
+            AppStrings.chooseAccount,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontTitle,
@@ -231,7 +232,7 @@ class _StepAccount extends StatelessWidget {
           ),
           SizedBox(height: AppSizes.s),
           Text(
-            'Select the account you want to\nperform the operation on:',
+            AppStrings.chooseAccountSubtitle,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -276,7 +277,7 @@ class _StepOperation extends StatelessWidget {
           _BackButton(onBack: onBack),
           SizedBox(height: AppSizes.l),
           Text(
-            'Choose the operation',
+            AppStrings.chooseOperation,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontTitle,
@@ -296,14 +297,14 @@ class _StepOperation extends StatelessWidget {
           ),
           SizedBox(height: AppSizes.xl),
           _OperationButton(
-            label: 'Deposit',
+            label: AppStrings.deposit,
             bg: AppColors.myGreen,
             textColor: AppColors.primary,
             onTap: () => onSelect('deposit'),
           ),
           SizedBox(height: AppSizes.m),
           _OperationButton(
-            label: 'Withdraw',
+            label: AppStrings.withdraw,
             bg: AppColors.myRed.withValues(alpha: 0.15),
             textColor: AppColors.myRed,
             onTap: () => onSelect('withdraw'),
@@ -354,7 +355,7 @@ class _StepAmount extends StatelessWidget {
           _BackButton(onBack: onBack),
           SizedBox(height: AppSizes.l),
           Text(
-            'Enter the amount',
+            AppStrings.enterAmount,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontTitle,
@@ -420,7 +421,7 @@ class _StepAmount extends StatelessWidget {
           // Title field
           _DetailField(
             controller: titleCtrl,
-            label: 'Title (optional)',
+            label: AppStrings.titleOptional,
             hint: _isDeposit ? 'e.g. Freelance payment' : 'e.g. Grocery shopping',
             icon: Icons.label_outline_rounded,
           ),
@@ -429,7 +430,7 @@ class _StepAmount extends StatelessWidget {
           // Note field
           _DetailField(
             controller: noteCtrl,
-            label: 'Note (optional)',
+            label: AppStrings.noteOptional,
             hint: 'Additional details...',
             icon: Icons.notes_rounded,
           ),
@@ -449,7 +450,7 @@ class _StepAmount extends StatelessWidget {
                         BorderRadius.circular(AppSizes.radiusXL)),
               ),
               child: Text(
-                'Confirm',
+                AppStrings.confirmOperation,
                 style: TextStyle(
                   fontFamily: 'Rubik',
                   fontSize: AppSizes.fontM,
@@ -503,7 +504,7 @@ class _AccountCard extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primary, Color(0xFF1A1D4A)],
+              colors: [AppColors.primary, AppColors.darkGradientEnd],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -634,7 +635,7 @@ class _DetailField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
+        color: AppColors.pageBackground,
         borderRadius: BorderRadius.circular(AppSizes.radiusL),
       ),
       child: TextField(

@@ -4,6 +4,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -59,17 +60,13 @@ class _HistorypageState extends ConsumerState<Historypage> {
   }
 
   String _monthLabel(DateTime dt) {
-    const months = [
-      '', 'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return '${months[dt.month]} ${dt.year}';
+    return '${AppStrings.monthsFull[dt.month]} ${dt.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -160,7 +157,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
           ),
           SizedBox(height: AppSizes.m),
           Text(
-            'No transactions yet',
+            AppStrings.noTransactions,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontL,
@@ -170,7 +167,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
           ),
           SizedBox(height: AppSizes.s),
           Text(
-            'Your history will appear here.',
+            AppStrings.historyEmptySubtitle,
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -215,9 +212,9 @@ class _HistorypageState extends ConsumerState<Historypage> {
   /// falls back to the name embedded in [note] after the '\x00' separator.
   String _accountName(int id, String note) {
     switch (id) {
-      case kWalletId: return 'Wallet';
-      case kBudgetId: return 'Monthly Budget';
-      case kSavingsId: return 'Savings';
+      case kWalletId: return AppStrings.wallet;
+      case kBudgetId: return AppStrings.monthlyBudget;
+      case kSavingsId: return AppStrings.savings;
       default:
         final accounts = ref.read(accountsProvider);
         try {
@@ -226,7 +223,7 @@ class _HistorypageState extends ConsumerState<Historypage> {
           // Use the account name embedded in the note field as a fallback.
           final sep = note.indexOf('\x00');
           final stored = sep >= 0 ? note.substring(sep + 1) : note;
-          return stored.isNotEmpty ? stored : 'Deleted Account';
+          return stored.isNotEmpty ? stored : AppStrings.deletedAccount;
         }
     }
   }

@@ -3,6 +3,7 @@ import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -212,7 +213,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           ),
                         )
                       : Text(
-                          _step == 0 ? "Let's Begin" : _step < 5 ? 'Continue' : 'Get Started',
+                          _step == 0 ? AppStrings.letsBegin : _step < 5 ? AppStrings.continueBtn : AppStrings.getStarted,
                           style: TextStyle(
                             fontFamily: 'Rubik',
                             fontSize: AppSizes.fontM,
@@ -276,24 +277,24 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
   String get _stepTitle {
     switch (_step) {
-      case 0: return "Money made\nsimple.";
-      case 1: return "What's your\nname?";
-      case 2: return "Pick your\ncurrency.";
-      case 3: return "Monthly\nSalary?";
-      case 4: return "Monthly\nBudget?";
-      case 5: return "Current\nSavings?";
+      case 0: return AppStrings.onboardingTitle;
+      case 1: return AppStrings.nameStepTitle;
+      case 2: return AppStrings.currencyStepTitle;
+      case 3: return AppStrings.salaryStepTitle;
+      case 4: return AppStrings.budgetStepTitle;
+      case 5: return AppStrings.savingsStepTitle;
       default: return '';
     }
   }
 
   String get _stepSubtitle {
     switch (_step) {
-      case 0: return "Know where your money goes.\nStay on budget. Grow your savings.";
-      case 1: return "This will appear in your wallet greeting.";
-      case 2: return "All amounts will be displayed in your\nselected currency.";
-      case 3: return "How much do you earn per month?\nThis is used on salary day.";
-      case 4: return "How much do you allocate for\nmonthly expenses?";
-      case 5: return "How much do you already have saved?\n(Enter 0 if starting fresh)";
+      case 0: return AppStrings.onboardingSubtitle;
+      case 1: return AppStrings.nameStepSubtitle;
+      case 2: return AppStrings.currencyStepSubtitle;
+      case 3: return AppStrings.salaryStepSubtitle;
+      case 4: return AppStrings.budgetStepSubtitle;
+      case 5: return AppStrings.savingsStepSubtitle;
       default: return '';
     }
   }
@@ -310,7 +311,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           alignment: Alignment.topLeft,
           child: _inputCard(
             controller: _nameCtrl,
-            hint: 'Your name',
+            hint: AppStrings.yourNameHint,
             suffix: null,
             isNumber: false,
           ),
@@ -354,11 +355,11 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _introBullet(Icons.track_changes_rounded, 'Track every penny in and out'),
+        _introBullet(Icons.track_changes_rounded, AppStrings.onboardingBullet1),
         SizedBox(height: AppSizes.m),
-        _introBullet(Icons.pie_chart_rounded, 'Separate your budget from your wallet'),
+        _introBullet(Icons.pie_chart_rounded, AppStrings.onboardingBullet2),
         SizedBox(height: AppSizes.m),
-        _introBullet(Icons.trending_up_rounded, 'Watch your savings grow over time'),
+        _introBullet(Icons.trending_up_rounded, AppStrings.onboardingBullet3),
       ],
     );
   }
@@ -389,7 +390,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 color: Colors.white,
                 fontWeight: FontWeight.w500),
             decoration: InputDecoration(
-              hintText: 'Search currencies...',
+              hintText: AppStrings.searchCurrencies,
               hintStyle: TextStyle(
                   fontFamily: 'Rubik',
                   color: Colors.white.withValues(alpha: 0.3)),
@@ -409,7 +410,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                   child: Padding(
                     padding: EdgeInsets.only(top: AppSizes.l),
                     child: Text(
-                      'No results',
+                      AppStrings.noResults,
                       style: TextStyle(
                           fontFamily: 'Rubik',
                           color: Colors.white.withValues(alpha: 0.3)),

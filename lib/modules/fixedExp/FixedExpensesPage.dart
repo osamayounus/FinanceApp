@@ -5,6 +5,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
@@ -80,21 +81,18 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       builder: (_) => TutorialOverlay(
         steps: [
           const TutorialStep(
-            title: 'Monthly Bills',
-            body:
-                'Track your fixed monthly expenses here — rent, subscriptions, utilities, and more.',
+            title: AppStrings.tutBillsTitle,
+            body: AppStrings.tutBillsBody,
           ),
           TutorialStep(
             targetKey: _fabKey,
-            title: 'Add a Bill',
-            body:
-                'Tap + to add a new bill. Each month, mark it as paid and it deducts from your Wallet.',
+            title: AppStrings.tutAddBillTitle,
+            body: AppStrings.tutAddBillBody,
             position: TipPosition.above,
           ),
           const TutorialStep(
-            title: 'Swipe to Manage',
-            body:
-                'Swipe a bill right to edit it, or left to delete it.\nTap the ✓ icon to mark it as paid.',
+            title: AppStrings.tutSwipeTitle,
+            body: AppStrings.tutSwipeBody,
           ),
         ],
         onDone: () {
@@ -137,22 +135,12 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Handle
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+                const ModalHandle(),
                 SizedBox(height: AppSizes.l),
 
                 // Title
                 Text(
-                  item == null ? 'Add Bill' : 'Edit Bill',
+                  item == null ? AppStrings.addBillTitle : AppStrings.editBillTitle,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontXXL,
@@ -163,7 +151,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 SizedBox(height: AppSizes.l),
 
                 // Bill name
-                _field(_nameCtrl, 'Bill Name'),
+                _field(_nameCtrl, AppStrings.billName),
                 SizedBox(height: AppSizes.m),
 
                 // Amount
@@ -172,7 +160,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
 
                 // Category label
                 Text(
-                  'CATEGORY',
+                  AppStrings.sectionCategory,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontXS,
@@ -200,7 +188,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                         decoration: BoxDecoration(
                           color: sel
                               ? cat.color.withValues(alpha: 0.12)
-                              : const Color(0xFFF2F3F7),
+                              : AppColors.pageBackground,
                           borderRadius:
                               BorderRadius.circular(AppSizes.radiusL),
                           border: Border.all(
@@ -291,7 +279,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             ),
             SizedBox(height: AppSizes.m),
             Text(
-              'Mark as Paid?',
+              AppStrings.markAsPaid,
               style: TextStyle(
                 fontFamily: 'Rubik',
                 fontSize: AppSizes.fontXXL,
@@ -324,14 +312,14 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       type: 'bill_paid',
                       amount: bill.amount.toDouble(),
                       title: bill.name,
-                      note: 'Monthly Bill',
+                      note: AppStrings.monthlyBill,
                       createdAt: DateTime.now(),
                     );
                     final success = await ref
                         .read(accountsProvider.notifier)
                         .withdraw(kWalletId, bill.amount.toDouble(), tx);
                     if (!success) {
-                      AppToast.error(messenger, 'Insufficient wallet balance');
+                      AppToast.error(messenger, AppStrings.insufficientWalletBalance);
                       return;
                     }
                     // Find the real index in the full list
@@ -374,20 +362,20 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       color: AppColors.myRed, size: AppSizes.iconM),
                 ),
                 SizedBox(width: AppSizes.s + 4),
-                const Text('Delete Bill',
+                const Text(AppStrings.deleteBillTitle,
                     style: TextStyle(
                         fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
               ],
             ),
             content: const Text(
-              'Are you sure? This action cannot be undone.',
+              AppStrings.deleteBillBody,
               style: TextStyle(height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dCtx, false),
-                child:
-                    Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+                child: Text(AppStrings.cancel,
+                    style: TextStyle(color: Colors.grey[500])),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(dCtx, true),
@@ -397,7 +385,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppSizes.radiusS)),
                 ),
-                child: const Text('Delete',
+                child: const Text(AppStrings.delete,
                     style: TextStyle(color: Colors.white)),
               ),
             ],
@@ -411,7 +399,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       {bool isNumber = false}) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
+        color: AppColors.pageBackground,
         borderRadius: BorderRadius.circular(AppSizes.radiusL),
       ),
       child: TextField(
@@ -505,7 +493,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         expenses.where((e) => e.isPaid).fold<int>(0, (s, e) => s + e.amount);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F3F7),
+      backgroundColor: AppColors.pageBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -516,7 +504,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Bills',
+          AppStrings.bills,
           style: TextStyle(
             fontFamily: 'Rubik',
             fontSize: AppSizes.fontXXL,
@@ -541,7 +529,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   ),
                   SizedBox(height: AppSizes.m),
                   Text(
-                    'No bills yet',
+                    AppStrings.noBillsYet,
                     style: TextStyle(
                         fontFamily: 'Rubik',
                         fontSize: AppSizes.fontL,
@@ -880,7 +868,7 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                               widget.onEdit?.call();
                             },
                             child: Container(
-                              color: const Color(0xFF1C2D6B),
+                              color: AppColors.swipeEditBg,
                               alignment: Alignment.centerLeft,
                               padding: EdgeInsets.only(left: AppSizes.l),
                               child: const _ActionLabel(
@@ -895,7 +883,7 @@ class _SlidableExpenseCardState extends State<_SlidableExpenseCard>
                             widget.onDelete?.call();
                           },
                           child: Container(
-                            color: const Color(0xFF8B1A1A),
+                            color: AppColors.swipeDeleteBg,
                             alignment: Alignment.centerRight,
                             padding: EdgeInsets.only(right: AppSizes.l),
                             child: const _ActionLabel(
@@ -976,7 +964,7 @@ class _ExpenseCard extends StatelessWidget {
             gradient: LinearGradient(
               colors: paid
                   ? [Colors.grey[200]!, Colors.grey[100]!]
-                  : [AppColors.primary, const Color(0xFF1A1D4A)],
+                  : [AppColors.primary, AppColors.darkGradientEnd],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
