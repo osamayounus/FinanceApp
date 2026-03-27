@@ -78,6 +78,27 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Back button ──────────────────────────────────────────
+              if (_step > 0)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _step--;
+                    _errorMessage = null;
+                  }),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, size: 18),
+                  ),
+                )
+              else
+                SizedBox(height: AppSizes.xl),
+
               SizedBox(height: AppSizes.xl),
 
               // ── Header ──────────────────────────────────────────────
@@ -138,7 +159,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               // ── Step dots ────────────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (i) {
+                children: List.generate(5, (i) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: i == _step ? 20 : 8,
@@ -178,7 +199,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                           ),
                         )
                       : Text(
-                          _step < 3 ? 'Continue' : 'Get Started',
+                          _step == 0 ? "Let's Begin" : _step < 4 ? 'Continue' : 'Get Started',
                           style: TextStyle(
                             fontFamily: 'Rubik',
                             fontSize: AppSizes.fontM,
@@ -196,7 +217,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 
   void _onNext() {
-    if (_step < 3) {
+    if (_step < 4) {
       if (!_validateCurrent()) return;
       setState(() {
         _step++;
@@ -211,12 +232,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   bool _validateCurrent() {
     switch (_step) {
       case 0:
+        return true; // intro — no input required
+      case 1:
         if (_nameCtrl.text.trim().isEmpty) return false;
         return true;
-      case 1:
+      case 2:
         if ((double.tryParse(_salaryCtrl.text.trim()) ?? 0) <= 0) return false;
         return true;
-      case 2:
+      case 3:
         final budget = double.tryParse(_budgetCtrl.text.trim()) ?? 0;
         final salary = double.tryParse(_salaryCtrl.text.trim()) ?? 0;
         if (budget <= 0) return false;
@@ -235,12 +258,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   String get _stepTitle {
     switch (_step) {
       case 0:
-        return "What's your\nname?";
+        return "Money made\nsimple.";
       case 1:
-        return "Monthly\nSalary?";
+        return "What's your\nname?";
       case 2:
-        return "Monthly\nBudget?";
+        return "Monthly\nSalary?";
       case 3:
+        return "Monthly\nBudget?";
+      case 4:
         return "Current\nSavings?";
       default:
         return '';
@@ -250,12 +275,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   String get _stepSubtitle {
     switch (_step) {
       case 0:
-        return "This will appear in your wallet greeting.";
+        return "Know where your money goes.\nStay on budget. Grow your savings.";
       case 1:
-        return "How much do you earn per month?\nThis is used on salary day.";
+        return "This will appear in your wallet greeting.";
       case 2:
-        return "How much do you allocate for\nmonthly expenses?";
+        return "How much do you earn per month?\nThis is used on salary day.";
       case 3:
+        return "How much do you allocate for\nmonthly expenses?";
+      case 4:
         return "How much do you already have saved?\n(Enter 0 if starting fresh)";
       default:
         return '';
@@ -265,27 +292,29 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   Widget _buildField() {
     switch (_step) {
       case 0:
+        return _buildIntro();
+      case 1:
         return _inputCard(
           controller: _nameCtrl,
           hint: 'Your name',
           suffix: null,
           isNumber: false,
         );
-      case 1:
+      case 2:
         return _inputCard(
           controller: _salaryCtrl,
           hint: '0',
           suffix: 'JOD',
           isNumber: true,
         );
-      case 2:
+      case 3:
         return _inputCard(
           controller: _budgetCtrl,
           hint: '0',
           suffix: 'JOD',
           isNumber: true,
         );
-      case 3:
+      case 4:
         return _inputCard(
           controller: _savingsCtrl,
           hint: '0',
@@ -295,6 +324,39 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       default:
         return const SizedBox();
     }
+  }
+
+  Widget _buildIntro() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _introBullet(Icons.track_changes_rounded, 'Track every penny in and out'),
+        SizedBox(height: AppSizes.m),
+        _introBullet(Icons.pie_chart_rounded, 'Separate your budget from your wallet'),
+        SizedBox(height: AppSizes.m),
+        _introBullet(Icons.trending_up_rounded, 'Watch your savings grow over time'),
+      ],
+    );
+  }
+
+  Widget _introBullet(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.myGreen, size: AppSizes.iconM),
+        SizedBox(width: AppSizes.m),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: AppSizes.fontM,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _inputCard({
