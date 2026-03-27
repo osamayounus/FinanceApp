@@ -334,4 +334,18 @@ class AppDatabase {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
+
+  /// Wipes all data so the app behaves as if freshly installed.
+  Future<void> resetDatabase() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('transactions');
+      await txn.delete('bills');
+      await txn.delete('accounts');
+      await txn.delete('settings');
+      await txn.delete('user');
+    });
+  }
 }

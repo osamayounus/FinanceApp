@@ -1,3 +1,4 @@
+import 'package:financeapp/main.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
@@ -5,11 +6,87 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class Profilepage extends ConsumerWidget {
+class Profilepage extends ConsumerStatefulWidget {
   const Profilepage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<Profilepage> createState() => _ProfilepageState();
+}
+
+class _ProfilepageState extends ConsumerState<Profilepage> {
+  bool _resetting = false;
+
+  Future<void> _confirmReset() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+        ),
+        title: const Text(
+          'Reset App',
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        content: const Text(
+          'This will erase all your data — accounts, transactions, bills, and settings. You will need to set up the app again.\n\nThis cannot be undone.',
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[500],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.myRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusM),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Reset',
+              style: TextStyle(
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _resetting = true);
+    final db = ref.read(dbProvider);
+    await db.resetDatabase();
+
+    appConfigNotifier.value = AppConfig(
+      isSetup: false,
+      isFirstRun: false,
+      db: db,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
 
     return Scaffold(
@@ -197,6 +274,109 @@ class Profilepage extends ConsumerWidget {
                   ],
                 ),
               ),
+              SizedBox(height: AppSizes.l),
+
+              // ── Danger zone label ────────────────────────────────
+              Padding(
+                padding: EdgeInsets.only(
+                    left: AppSizes.xs, bottom: AppSizes.s),
+                child: Text(
+                  'DANGER ZONE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'Rubik',
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.myRed.withValues(alpha: 0.7),
+                    letterSpacing: 1.4,
+                  ),
+                ),
+              ),
+
+              // ── Reset card ───────────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      BorderRadius.circular(AppSizes.radiusXL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _resetting ? null : _confirmReset,
+                    borderRadius:
+                        BorderRadius.circular(AppSizes.radiusXL),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.m,
+                          vertical: AppSizes.m),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.myRed
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(
+                                  AppSizes.radiusM),
+                            ),
+                            child: _resetting
+                                ? Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.myRed,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.delete_sweep_rounded,
+                                    color: AppColors.myRed,
+                                    size: AppSizes.iconM,
+                                  ),
+                          ),
+                          SizedBox(width: AppSizes.m),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reset App Data',
+                                  style: TextStyle(
+                                    fontSize: AppSizes.fontM,
+                                    fontFamily: 'Rubik',
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.myRed,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Erase everything and start over',
+                                  style: TextStyle(
+                                    fontSize: AppSizes.fontXS,
+                                    fontFamily: 'Rubik',
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded,
+                              color: Colors.grey[300], size: 22),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppSizes.l),
             ],
           ),
         ),

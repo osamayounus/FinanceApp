@@ -17,6 +17,7 @@ class OnboardingPage extends ConsumerStatefulWidget {
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   int _step = 0;
   bool _loading = false;
+  String? _errorMessage;
 
   final _nameCtrl = TextEditingController();
   final _salaryCtrl = TextEditingController();
@@ -111,6 +112,27 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 ),
               ),
 
+              if (_errorMessage != null) ...[
+                SizedBox(height: AppSizes.s),
+                Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        color: Colors.redAccent, size: 16),
+                    SizedBox(width: AppSizes.xs),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 13,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
               const Spacer(),
 
               // ── Step dots ────────────────────────────────────────────
@@ -176,7 +198,10 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   void _onNext() {
     if (_step < 3) {
       if (!_validateCurrent()) return;
-      setState(() => _step++);
+      setState(() {
+        _step++;
+        _errorMessage = null;
+      });
     } else {
       if (!_validateCurrent()) return;
       _finish();
@@ -186,11 +211,22 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   bool _validateCurrent() {
     switch (_step) {
       case 0:
-        return _nameCtrl.text.trim().isNotEmpty;
+        if (_nameCtrl.text.trim().isEmpty) return false;
+        return true;
       case 1:
-        return (double.tryParse(_salaryCtrl.text.trim()) ?? 0) > 0;
+        if ((double.tryParse(_salaryCtrl.text.trim()) ?? 0) <= 0) return false;
+        return true;
       case 2:
-        return (double.tryParse(_budgetCtrl.text.trim()) ?? 0) > 0;
+        final budget = double.tryParse(_budgetCtrl.text.trim()) ?? 0;
+        final salary = double.tryParse(_salaryCtrl.text.trim()) ?? 0;
+        if (budget <= 0) return false;
+        if (budget >= salary) {
+          setState(() => _errorMessage =
+              'Budget must be less than your salary (${salary.toInt()} JOD)');
+          return false;
+        }
+        setState(() => _errorMessage = null);
+        return true;
       default:
         return true; // savings optional
     }
