@@ -90,6 +90,69 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     return true;
   }
 
+  Future<AccountModel> addCustomAccount(String name, int colorIndex, int iconCode) async {
+    final id = await _db.insertCustomAccount(name, colorIndex, iconCode);
+    final account = AccountModel(
+      id: id,
+      type: AccountType.custom,
+      balance: 0.0,
+      customName: name,
+      colorIndex: colorIndex,
+      iconCode: iconCode,
+    );
+    state = [...state, account];
+    return account;
+  }
+
+  Future<void> updateCustomAccount(
+      int accountId, String name, int colorIndex, int iconCode) async {
+    await _db.updateCustomAccount(accountId, name, colorIndex, iconCode);
+    state = [
+      for (final a in state)
+        if (a.id == accountId)
+          AccountModel(
+            id: a.id,
+            type: a.type,
+            balance: a.balance,
+            customName: name,
+            colorIndex: colorIndex,
+            iconCode: iconCode,
+          )
+        else
+          a,
+    ];
+  }
+
+  Future<void> deleteCustomAccount(int accountId,
+      {bool transferToWallet = false}) async {
+    if (transferToWallet) {
+      final account = state.firstWhere((a) => a.id == accountId);
+      if (account.balance > 0) {
+        final wallet = state.firstWhere((a) => a.id == kWalletId);
+        final now = DateTime.now();
+        await _db.updateBalance(kWalletId, wallet.balance + account.balance);
+        await _db.insertTransaction(TransactionModel(
+          id: 0,
+          accountId: kWalletId,
+          type: 'transfer_in',
+          amount: account.balance,
+          title: 'From ${account.displayName}',
+          relatedAccountId: accountId,
+          createdAt: now,
+        ));
+        state = [
+          for (final a in state)
+            if (a.id == kWalletId)
+              a.copyWith(balance: wallet.balance + account.balance)
+            else
+              a,
+        ];
+      }
+    }
+    await _db.deleteAccount(accountId);
+    state = state.where((a) => a.id != accountId).toList();
+  }
+
   /// Called after salary day — updates wallet + budget balances in state.
   Future<void> processSalaryDay(double salary, double monthlyBudget) async {
     final result = await _db.processSalaryDay(

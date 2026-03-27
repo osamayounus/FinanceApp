@@ -29,7 +29,7 @@ class AppDatabase {
     final path = join(dbPath, 'finance.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -43,6 +43,11 @@ class AppDatabase {
           value TEXT NOT NULL
         )
       ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE accounts ADD COLUMN custom_name TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN color_index INTEGER');
+      await db.execute('ALTER TABLE accounts ADD COLUMN icon_code INTEGER');
     }
   }
 
@@ -59,7 +64,10 @@ class AppDatabase {
       CREATE TABLE accounts (
         id INTEGER PRIMARY KEY,
         type TEXT NOT NULL,
-        balance REAL NOT NULL DEFAULT 0.0
+        balance REAL NOT NULL DEFAULT 0.0,
+        custom_name TEXT,
+        color_index INTEGER,
+        icon_code INTEGER
       )
     ''');
     await db.execute('''
@@ -165,13 +173,44 @@ class AppDatabase {
   Future<List<AccountModel>> getAccounts() async {
     final db = await database;
     final r = await db.query('accounts');
-    return r.map(AccountModel.fromMap).toList();
+    return r.map((map) => AccountModel.fromMap(map)).toList();
   }
 
   Future<void> updateBalance(int accountId, double balance) async {
     final db = await database;
     await db.update('accounts', {'balance': balance},
         where: 'id = ?', whereArgs: [accountId]);
+  }
+
+  Future<void> updateCustomAccount(
+      int id, String name, int colorIndex, int iconCode) async {
+    final db = await database;
+    await db.update(
+      'accounts',
+      {'custom_name': name, 'color_index': colorIndex, 'icon_code': iconCode},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> insertCustomAccount(String name, int colorIndex, int iconCode) async {
+    final db = await database;
+    final id = await db.insert('accounts', {
+      'type': 'custom',
+      'balance': 0.0,
+      'custom_name': name,
+      'color_index': colorIndex,
+      'icon_code': iconCode,
+    });
+    return id;
+  }
+
+  Future<void> deleteAccount(int id) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('transactions', where: 'account_id = ?', whereArgs: [id]);
+      await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   // ── Transactions ──────────────────────────────────────────────────────────

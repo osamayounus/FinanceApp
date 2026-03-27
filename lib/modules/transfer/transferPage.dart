@@ -49,16 +49,24 @@ class _TransferPageState extends ConsumerState<TransferPage> {
     super.dispose();
   }
 
-  List<_Acc> get _accounts => const [
-        _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
-        _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
-        _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
-      ];
-
-  _Acc get _from => _accounts.firstWhere((a) => a.id == _fromId);
-  _Acc get _to => _accounts.firstWhere((a) => a.id == _toId);
+  List<_Acc> _buildAccounts() {
+    final accounts = ref.read(accountsProvider);
+    return [
+      const _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
+      const _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
+      const _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
+      ...accounts.where((a) => a.isCustom).map((a) => _Acc(
+            a.id,
+            a.displayName,
+            a.iconCode != null
+                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
+                : Icons.savings_rounded,
+          )),
+    ];
+  }
 
   Future<void> _pickAccount({required bool isFrom}) async {
+    final accList = _buildAccounts();
     final currentId = isFrom ? _fromId : _toId;
     final picked = await showModalBottomSheet<int>(
       context: context,
@@ -66,7 +74,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       builder: (ctx) => _AccountPickerSheet(
         title: isFrom ? 'Transfer From' : 'Transfer To',
         currentId: currentId,
-        accounts: _accounts,
+        accounts: accList,
       ),
     );
     if (picked == null || picked == currentId) return;
@@ -74,12 +82,12 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       if (isFrom) {
         _fromId = picked;
         if (_toId == picked) {
-          _toId = _accounts.firstWhere((a) => a.id != picked).id;
+          _toId = accList.firstWhere((a) => a.id != picked).id;
         }
       } else {
         _toId = picked;
         if (_fromId == picked) {
-          _fromId = _accounts.firstWhere((a) => a.id != picked).id;
+          _fromId = accList.firstWhere((a) => a.id != picked).id;
         }
       }
     });
@@ -92,6 +100,10 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       });
 
   Future<void> _confirm() async {
+    final accList = _buildAccounts();
+    final fromAcc = accList.firstWhere((a) => a.id == _fromId);
+    final toAcc = accList.firstWhere((a) => a.id == _toId);
+
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -140,20 +152,34 @@ class _TransferPageState extends ConsumerState<TransferPage> {
 
     if (!mounted) return;
     if (!success) {
-      AppToast.error(messenger, 'Insufficient balance in ${_from.name}');
+      AppToast.error(messenger, 'Insufficient balance in ${fromAcc.name}');
       return;
     }
 
-    AppToast.success(
-        messenger, '$amountStr JOD transferred to ${_to.name}');
+    AppToast.success(messenger, '$amountStr JOD transferred to ${toAcc.name}');
     Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final accounts = ref.watch(accountsProvider);
+    final allAccounts = ref.watch(accountsProvider);
+    final accList = [
+      const _Acc(kWalletId, 'Wallet', Icons.account_balance_wallet_rounded),
+      const _Acc(kSavingsId, 'Savings', Icons.savings_rounded),
+      const _Acc(kBudgetId, 'Monthly Budget', Icons.receipt_long_rounded),
+      ...allAccounts.where((a) => a.isCustom).map((a) => _Acc(
+            a.id,
+            a.displayName,
+            a.iconCode != null
+                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
+                : Icons.savings_rounded,
+          )),
+    ];
+
+    final fromAcc = accList.firstWhere((a) => a.id == _fromId);
+    final toAcc = accList.firstWhere((a) => a.id == _toId);
     final fromBalance =
-        accounts.firstWhere((a) => a.id == _fromId).balance;
+        allAccounts.firstWhere((a) => a.id == _fromId).balance;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F3F7),
@@ -190,7 +216,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                 children: [
                   _AccountRow(
                     label: 'From',
-                    account: _from,
+                    account: fromAcc,
                     onTap: () => _pickAccount(isFrom: true),
                   ),
                   Stack(
@@ -223,7 +249,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                   ),
                   _AccountRow(
                     label: 'To',
-                    account: _to,
+                    account: toAcc,
                     onTap: () => _pickAccount(isFrom: false),
                   ),
                 ],
@@ -381,7 +407,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                       fontSize: AppSizes.fontXS,
                       color: Colors.grey[400]),
                   children: [
-                    TextSpan(text: _from.name),
+                    TextSpan(text: fromAcc.name),
                     const WidgetSpan(
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
@@ -389,7 +415,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                             size: 12, color: Colors.grey),
                       ),
                     ),
-                    TextSpan(text: _to.name),
+                    TextSpan(text: toAcc.name),
                   ],
                 ),
               ),

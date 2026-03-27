@@ -216,7 +216,13 @@ class _HistorypageState extends ConsumerState<Historypage> {
       case kWalletId: return 'Wallet';
       case kBudgetId: return 'Monthly Budget';
       case kSavingsId: return 'Savings';
-      default: return 'Unknown';
+      default:
+        final accounts = ref.read(accountsProvider);
+        try {
+          return accounts.firstWhere((a) => a.id == id).displayName;
+        } catch (_) {
+          return 'Unknown';
+        }
     }
   }
 }

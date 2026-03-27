@@ -129,6 +129,14 @@ class _OperationPageState extends ConsumerState<OperationPage> {
         Icons.receipt_long_rounded,
         accounts.firstWhere((a) => a.id == kBudgetId).balance,
       ),
+      ...accounts.where((a) => a.isCustom).map((a) => _Account(
+            a.id,
+            a.displayName,
+            a.iconCode != null
+                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
+                : Icons.savings_rounded,
+            a.balance,
+          )),
     ];
 
     return Scaffold(

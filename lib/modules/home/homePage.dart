@@ -1,5 +1,6 @@
 import 'package:card_swiper/card_swiper.dart';
 import 'package:financeapp/main.dart';
+import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/modules/home/cards/incomeCard.dart';
 import 'package:financeapp/modules/home/cards/monthlyExpCard.dart';
 import 'package:financeapp/modules/home/cards/savingCard.dart';
@@ -21,12 +22,6 @@ class Homepage extends ConsumerStatefulWidget {
 }
 
 class _HomepageState extends ConsumerState<Homepage> {
-  static const List<Widget> _cards = [
-    IncomeCard(),
-    SavingCard(),
-    MonthlyExpCard(),
-  ];
-
   // GlobalKeys for tutorial spotlights
   final _cardsKey = GlobalKey();
   final _opBtnKey = GlobalKey();
@@ -110,6 +105,15 @@ class _HomepageState extends ConsumerState<Homepage> {
   void _dismissTutorial() {
     _tutorialEntry?.remove();
     _tutorialEntry = null;
+  }
+
+  void _showAddAccountSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddAccountSheet(),
+    );
   }
 
   void _showHowItWorksSheet(BuildContext context) {
@@ -381,8 +385,18 @@ class _HomepageState extends ConsumerState<Homepage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
+    final accounts = ref.watch(accountsProvider);
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
+
+    final List<Widget> cards = [
+      const IncomeCard(),
+      const SavingCard(),
+      const MonthlyExpCard(),
+      ...accounts
+          .where((a) => a.isCustom)
+          .map((a) => CustomAccountCard(account: a)),
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.primary,
@@ -427,60 +441,79 @@ class _HomepageState extends ConsumerState<Homepage> {
               ),
             ),
 
-            // ── Cards swiper + info pill ─────────────────────────────
+            // ── Cards swiper + buttons row ───────────────────────────
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Info button
+                  // "+" and "?" buttons row
                   Padding(
                     padding: EdgeInsets.only(
+                      left: screenWidth * 0.1,
                       right: screenWidth * 0.1,
                       bottom: AppSizes.s,
                     ),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => _showHowItWorksSheet(context),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: AppSizes.s + 2,
-                              vertical: AppSizes.xs + 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.07),
-                            borderRadius:
-                                BorderRadius.circular(AppSizes.radiusXXL),
-                            border: Border.all(
-                              color:
-                                  AppColors.secondary.withValues(alpha: 0.15),
-                              width: 1,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // "+" add account button (left)
+                        GestureDetector(
+                          onTap: () => _showAddAccountSheet(context),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.secondary.withValues(alpha: 0.08),
+                              border: Border.all(
+                                  color: AppColors.secondary.withValues(alpha: 0.18),
+                                  width: 1),
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.lightbulb_outline_rounded,
-                                size: 13,
-                                color:
-                                    AppColors.secondary.withValues(alpha: 0.55),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'How it works',
-                                style: TextStyle(
-                                  fontFamily: 'Rubik',
-                                  fontSize: AppSizes.fontXS,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.secondary
-                                      .withValues(alpha: 0.55),
-                                ),
-                              ),
-                            ],
+                            child: Icon(Icons.add_rounded,
+                                size: 16,
+                                color: AppColors.secondary.withValues(alpha: 0.55)),
                           ),
                         ),
-                      ),
+                        // "?" how it works button (right)
+                        GestureDetector(
+                          onTap: () => _showHowItWorksSheet(context),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: AppSizes.s + 2,
+                                vertical: AppSizes.xs + 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withValues(alpha: 0.07),
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusXXL),
+                              border: Border.all(
+                                color: AppColors.secondary.withValues(alpha: 0.15),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline_rounded,
+                                  size: 13,
+                                  color: AppColors.secondary.withValues(alpha: 0.55),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'How it works',
+                                  style: TextStyle(
+                                    fontFamily: 'Rubik',
+                                    fontSize: AppSizes.fontXS,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.secondary.withValues(alpha: 0.55),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -492,8 +525,8 @@ class _HomepageState extends ConsumerState<Homepage> {
                       children: [
                         Swiper(
                           itemBuilder: (BuildContext context, int index) =>
-                              _cards[index],
-                          itemCount: _cards.length,
+                              cards[index],
+                          itemCount: cards.length,
                           itemWidth: screenWidth * 0.8,
                           itemHeight: screenHeight * 0.28,
                           layout: SwiperLayout.STACK,
@@ -559,5 +592,208 @@ class _HomepageState extends ConsumerState<Homepage> {
         ),
       ),
     );
+  }
+}
+
+// ── Add Account Bottom Sheet ───────────────────────────────────────────────────
+
+class _AddAccountSheet extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_AddAccountSheet> createState() => _AddAccountSheetState();
+}
+
+class _AddAccountSheetState extends ConsumerState<_AddAccountSheet> {
+  final _nameCtrl = TextEditingController();
+  int _selectedColor = 0;
+  int _selectedIcon = 0;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXXL)),
+        ),
+        padding: EdgeInsets.fromLTRB(AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.grey[200], borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            SizedBox(height: AppSizes.l),
+            Text(
+              'New Account',
+              style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: AppSizes.fontXXL,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary),
+            ),
+            SizedBox(height: AppSizes.l),
+
+            // Name field
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2F3F7),
+                borderRadius: BorderRadius.circular(AppSizes.radiusL),
+              ),
+              child: TextField(
+                controller: _nameCtrl,
+                autofocus: true,
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontM,
+                    color: AppColors.primary),
+                decoration: InputDecoration(
+                  hintText: 'Account name',
+                  hintStyle: TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+                  border: InputBorder.none,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: AppSizes.m, vertical: AppSizes.m),
+                ),
+              ),
+            ),
+            SizedBox(height: AppSizes.l),
+
+            // Color picker label
+            Text('Color',
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary)),
+            SizedBox(height: AppSizes.s),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(kCustomAccountColors.length, (i) {
+                final selected = i == _selectedColor;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedColor = i),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [kCustomAccountColors[i][0], kCustomAccountColors[i][1]],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: selected
+                          ? Border.all(color: AppColors.primary, width: 2.5)
+                          : null,
+                    ),
+                    child: selected
+                        ? Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                        : null,
+                  ),
+                );
+              }),
+            ),
+            SizedBox(height: AppSizes.l),
+
+            // Icon picker label
+            Text('Icon',
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary)),
+            SizedBox(height: AppSizes.s),
+            Wrap(
+              spacing: AppSizes.s,
+              runSpacing: AppSizes.s,
+              children: List.generate(kCustomAccountIcons.length, (i) {
+                final selected = i == _selectedIcon;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedIcon = i),
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? kCustomAccountColors[_selectedColor][0].withValues(alpha: 0.15)
+                          : const Color(0xFFF2F3F7),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                      border: selected
+                          ? Border.all(
+                              color: kCustomAccountColors[_selectedColor][0], width: 1.5)
+                          : null,
+                    ),
+                    child: Icon(
+                      kCustomAccountIcons[i],
+                      size: 20,
+                      color: selected
+                          ? kCustomAccountColors[_selectedColor][0]
+                          : Colors.grey[500],
+                    ),
+                  ),
+                );
+              }),
+            ),
+            SizedBox(height: AppSizes.l),
+
+            // Create button
+            SizedBox(
+              width: double.infinity,
+              height: AppSizes.buttonHeight,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.radiusL)),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : Text(
+                        'Create Account',
+                        style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontWeight: FontWeight.bold,
+                            fontSize: AppSizes.fontM,
+                            color: Colors.white),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    final icon = kCustomAccountIcons[_selectedIcon];
+    await ref.read(accountsProvider.notifier).addCustomAccount(
+          name,
+          _selectedColor,
+          icon.codePoint,
+        );
+    if (mounted) Navigator.pop(context);
   }
 }
