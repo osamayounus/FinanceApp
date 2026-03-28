@@ -248,6 +248,14 @@ class AppDatabase {
     return r.map(TransactionModel.fromMap).toList();
   }
 
+  /// Returns every transaction across all accounts, newest first.
+  /// Used by [analyticsProvider] to compute monthly income/expense stats.
+  Future<List<TransactionModel>> getAllTransactions() async {
+    final db = await database;
+    final r = await db.query('transactions', orderBy: 'created_at DESC');
+    return r.map(TransactionModel.fromMap).toList();
+  }
+
   Future<void> insertTransaction(TransactionModel tx) async {
     final db = await database;
     await db.insert('transactions', tx.toMap());

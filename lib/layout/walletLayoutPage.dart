@@ -3,6 +3,7 @@
 // Home/Wallet, Profile) inside an IndexedStack so all pages stay mounted and
 // preserve their scroll/state when switching tabs.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'package:financeapp/modules/analytics/analyticsPage.dart';
 import 'package:financeapp/modules/home/homePage.dart';
 import 'package:financeapp/modules/profile/profilePage.dart';
 import 'package:financeapp/modules/salaryDay/salaryDayPage.dart';
@@ -18,6 +19,7 @@ class Walletlayoutpage extends ConsumerWidget {
   static const List<Widget> _pages = [
     Salarydaypage(),
     Homepage(),
+    AnalyticsPage(),
     Profilepage(),
   ];
 
@@ -75,6 +77,11 @@ class Walletlayoutpage extends ConsumerWidget {
                 GButton(
                   icon: Icons.wallet_rounded,
                   text: 'Wallet',
+                  iconSize: 24,
+                ),
+                GButton(
+                  icon: Icons.bar_chart_rounded,
+                  text: 'Analytics',
                   iconSize: 24,
                 ),
                 GButton(
