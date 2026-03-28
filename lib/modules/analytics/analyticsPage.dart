@@ -49,10 +49,17 @@ class AnalyticsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
+        // bottom: false — let content extend behind the floating nav bar.
+        // The scroll view adds its own bottom padding equal to the nav bar
+        // height (via MediaQuery) so the last item can always be scrolled
+        // into full view above the bar.
+        bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSizes.m,
-            vertical: AppSizes.s,
+          padding: EdgeInsets.only(
+            left: AppSizes.m,
+            right: AppSizes.m,
+            top: AppSizes.s,
+            bottom: AppSizes.m + MediaQuery.of(context).padding.bottom,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
