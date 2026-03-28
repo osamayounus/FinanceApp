@@ -65,7 +65,7 @@ class AppStrings {
       'Move funds between Wallet, Savings, and Budget instantly.';
   static const String tutNavigation = 'Navigation';
   static const String tutNavigationBody =
-      'Use the bottom bar:\n💰 Salary Day — press when your salary arrives\n👤 Profile — edit your name and budget settings';
+      'Use the bottom bar:\n💰 Salary Day — press when your salary arrives\n📊 Analytics — view your spending charts\n👤 Profile — edit your name and budget settings';
   static const String tutBillsTitle = 'Monthly Bills';
   static const String tutBillsBody =
       'Track your fixed monthly expenses here — rent, subscriptions, utilities, and more.';

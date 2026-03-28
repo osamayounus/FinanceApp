@@ -322,7 +322,7 @@ class _SpotlightPainter extends CustomPainter {
     // Dark overlay
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.black.withValues(alpha: 0.65),
+      Paint()..color = Colors.black.withValues(alpha: 0.75),
     );
     // Clear spotlight hole
     canvas.drawRRect(
@@ -341,7 +341,7 @@ class _DimPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.black.withValues(alpha: 0.65),
+      Paint()..color = Colors.black.withValues(alpha: 0.75),
     );
   }
 
