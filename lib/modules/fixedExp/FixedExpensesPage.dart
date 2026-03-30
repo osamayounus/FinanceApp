@@ -89,12 +89,15 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   void _showBottomSheet({ExpenseModel? item, int? index}) {
     if (item != null) {
       _nameCtrl.text = item.name;
-      _amountCtrl.text = item.amount.toString();
+      _amountCtrl.text = item.amount % 1 == 0
+          ? item.amount.toInt().toString()
+          : item.amount.toStringAsFixed(2);
     } else {
       _nameCtrl.clear();
       _amountCtrl.clear();
     }
     String sheetCat = item?.category ?? '';
+    String sheetError = '';
 
     showModalBottomSheet(
       context: context,
@@ -102,16 +105,22 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(AppSizes.radiusXXL)),
+                top: Radius.circular(AppSizes.radiusXXL),
+              ),
             ),
             padding: EdgeInsets.fromLTRB(
-                AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+              AppSizes.l,
+              AppSizes.m,
+              AppSizes.l,
+              AppSizes.l,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,7 +130,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
 
                 // Title
                 Text(
-                  item == null ? AppStrings.addBillTitle : AppStrings.editBillTitle,
+                  item == null
+                      ? AppStrings.addBillTitle
+                      : AppStrings.editBillTitle,
                   style: TextStyle(
                     fontFamily: 'Rubik',
                     fontSize: AppSizes.fontXXL,
@@ -136,7 +147,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 SizedBox(height: AppSizes.m),
 
                 // Amount
-                _field(_amountCtrl, 'Amount (${ref.read(currencyProvider)})', isNumber: true),
+                _field(
+                  _amountCtrl,
+                  'Amount (${ref.read(currencyProvider)})',
+                  isNumber: true,
+                ),
                 SizedBox(height: AppSizes.l),
 
                 // Category label
@@ -157,21 +172,24 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   spacing: AppSizes.s,
                   runSpacing: AppSizes.s,
                   children: kBillCats.map((cat) {
-                    final sel = sheetCat == cat.name ||
+                    final sel =
+                        sheetCat == cat.name ||
                         (sheetCat.isEmpty && cat.name == 'Other');
                     return GestureDetector(
                       onTap: () => setSheetState(
-                          () => sheetCat = cat.name == 'Other' ? '' : cat.name),
+                        () => sheetCat = cat.name == 'Other' ? '' : cat.name,
+                      ),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: EdgeInsets.symmetric(
-                            horizontal: AppSizes.m, vertical: AppSizes.s),
+                          horizontal: AppSizes.m,
+                          vertical: AppSizes.s,
+                        ),
                         decoration: BoxDecoration(
                           color: sel
                               ? cat.color.withValues(alpha: 0.12)
                               : AppColors.pageBackground,
-                          borderRadius:
-                              BorderRadius.circular(AppSizes.radiusL),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusL),
                           border: Border.all(
                             color: sel ? cat.color : Colors.transparent,
                             width: 1.5,
@@ -180,9 +198,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(cat.icon,
-                                color: sel ? cat.color : Colors.grey[400],
-                                size: AppSizes.iconS),
+                            Icon(
+                              cat.icon,
+                              color: sel ? cat.color : Colors.grey[400],
+                              size: AppSizes.iconS,
+                            ),
                             SizedBox(width: AppSizes.xs + 2),
                             Text(
                               cat.name,
@@ -200,7 +220,44 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   }).toList(),
                 ),
 
-                SizedBox(height: AppSizes.l),
+                if (sheetError.isNotEmpty) ...[
+                  SizedBox(height: AppSizes.s),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      vertical: AppSizes.s,
+                      horizontal: AppSizes.m,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.myRed.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                      border: Border.all(
+                        color: AppColors.myRed.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.myRed,
+                          size: AppSizes.iconS,
+                        ),
+                        SizedBox(width: AppSizes.xs),
+                        Text(
+                          sheetError,
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: AppSizes.fontXS,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.myRed,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: AppSizes.m),
+                ],
 
                 // Buttons
                 Row(
@@ -208,25 +265,29 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                     Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
                     SizedBox(width: AppSizes.s + 4),
                     Expanded(
-                      child: _primaryBtn(
-                        item == null ? 'Add' : 'Save',
-                        () {
-                          final name = _nameCtrl.text.trim();
-                          final amount =
-                              int.tryParse(_amountCtrl.text.trim()) ?? 0;
-                          if (name.isEmpty || amount <= 0) return;
-                          if (item == null) {
-                            ref
-                                .read(expensesProvider.notifier)
-                                .add(name, amount, sheetCat);
-                          } else {
-                            ref
-                                .read(expensesProvider.notifier)
-                                .edit(index!, name, amount, sheetCat);
-                          }
-                          Navigator.pop(ctx);
-                        },
-                      ),
+                      child: _primaryBtn(item == null ? 'Add' : 'Save', () {
+                        final name = _nameCtrl.text.trim();
+                        final amount =
+                            double.tryParse(_amountCtrl.text.trim()) ?? 0;
+                        if (name.isEmpty || amount <= 0) {
+                          setSheetState(
+                            () => sheetError = amount <= 0
+                                ? AppStrings.enterValidAmount
+                                : 'Please enter a bill name',
+                          );
+                          return;
+                        }
+                        if (item == null) {
+                          ref
+                              .read(expensesProvider.notifier)
+                              .add(name, amount, sheetCat);
+                        } else {
+                          ref
+                              .read(expensesProvider.notifier)
+                              .edit(index!, name, amount, sheetCat);
+                        }
+                        Navigator.pop(ctx);
+                      }),
                     ),
                   ],
                 ),
@@ -245,7 +306,8 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
+          borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -255,8 +317,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 color: AppColors.myGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_circle_outline,
-                  color: AppColors.myGreen, size: AppSizes.iconXL),
+              child: Icon(
+                Icons.check_circle_outline,
+                color: AppColors.myGreen,
+                size: AppSizes.iconXL,
+              ),
             ),
             SizedBox(height: AppSizes.m),
             Text(
@@ -270,13 +335,14 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             ),
             SizedBox(height: AppSizes.s),
             Text(
-              'This will deduct ${bill.amount} ${ref.read(currencyProvider)} from your Wallet.',
+              'This will deduct ${_fmtAmt(bill.amount)} ${ref.read(currencyProvider)} from your Wallet.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontFamily: 'Rubik',
-                  fontSize: AppSizes.fontS,
-                  color: Colors.grey[400],
-                  height: 1.5),
+                fontFamily: 'Rubik',
+                fontSize: AppSizes.fontS,
+                color: Colors.grey[400],
+                height: 1.5,
+              ),
             ),
             SizedBox(height: AppSizes.l),
             Row(
@@ -291,29 +357,35 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       id: 0,
                       accountId: kWalletId,
                       type: 'bill_paid',
-                      amount: bill.amount.toDouble(),
+                      amount: bill.amount,
                       title: bill.name,
                       note: AppStrings.monthlyBill,
                       createdAt: DateTime.now(),
                     );
                     final success = await ref
                         .read(accountsProvider.notifier)
-                        .withdraw(kWalletId, bill.amount.toDouble(), tx);
+                        .withdraw(kWalletId, bill.amount, tx);
                     if (!success) {
-                      AppToast.error(messenger, AppStrings.insufficientWalletBalance);
+                      AppToast.error(
+                        messenger,
+                        AppStrings.insufficientWalletBalance,
+                      );
                       return;
                     }
                     // Find the real index in the full list
                     final allBills = ref.read(expensesProvider);
-                    final realIndex =
-                        allBills.indexWhere((b) => b.id == bill.id);
+                    final realIndex = allBills.indexWhere(
+                      (b) => b.id == bill.id,
+                    );
                     if (realIndex != -1) {
                       await ref
                           .read(expensesProvider.notifier)
                           .markPaid(realIndex);
                     }
                     AppToast.success(
-                        messenger, '${bill.name} paid · - ${bill.amount} ${ref.read(currencyProvider)}');
+                      messenger,
+                      '${bill.name} paid · - ${_fmtAmt(bill.amount)} ${ref.read(currencyProvider)}',
+                    );
                   }, color: AppColors.myGreen),
                 ),
               ],
@@ -330,7 +402,8 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
           context: ctx,
           builder: (dCtx) => AlertDialog(
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
+              borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+            ),
             title: Row(
               children: [
                 Container(
@@ -339,13 +412,20 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                     color: AppColors.myRed.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.delete_outline,
-                      color: AppColors.myRed, size: AppSizes.iconM),
+                  child: Icon(
+                    Icons.delete_outline,
+                    color: AppColors.myRed,
+                    size: AppSizes.iconM,
+                  ),
                 ),
                 SizedBox(width: AppSizes.s + 4),
-                const Text(AppStrings.deleteBillTitle,
-                    style: TextStyle(
-                        fontFamily: 'Rubik', fontWeight: FontWeight.bold)),
+                const Text(
+                  AppStrings.deleteBillTitle,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
             content: const Text(
@@ -355,8 +435,10 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dCtx, false),
-                child: Text(AppStrings.cancel,
-                    style: TextStyle(color: Colors.grey[500])),
+                child: Text(
+                  AppStrings.cancel,
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(dCtx, true),
@@ -364,10 +446,13 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   backgroundColor: AppColors.myRed,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.radiusS)),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusS),
+                  ),
                 ),
-                child: const Text(AppStrings.delete,
-                    style: TextStyle(color: Colors.white)),
+                child: const Text(
+                  AppStrings.delete,
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -376,8 +461,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   }
 
   // ── Shared UI helpers ────────────────────────────────────────────────────────
-  Widget _field(TextEditingController ctrl, String label,
-      {bool isNumber = false}) {
+  Widget _field(
+    TextEditingController ctrl,
+    String label, {
+    bool isNumber = false,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.pageBackground,
@@ -385,13 +473,26 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
       ),
       child: TextField(
         controller: ctrl,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        inputFormatters:
-            isNumber ? [FilteringTextInputFormatter.digitsOnly] : null,
+        keyboardType: isNumber
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : TextInputType.text,
+        inputFormatters: isNumber
+            ? [
+                TextInputFormatter.withFunction((oldValue, newValue) {
+                  final text = newValue.text;
+                  if (text.isEmpty) return newValue;
+                  if (!RegExp(r'^\d*\.?\d{0,2}$').hasMatch(text)) {
+                    return oldValue;
+                  }
+                  return newValue;
+                }),
+              ]
+            : null,
         style: const TextStyle(
-            fontFamily: 'Rubik',
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary),
+          fontFamily: 'Rubik',
+          fontWeight: FontWeight.w600,
+          color: AppColors.primary,
+        ),
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
@@ -406,46 +507,59 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
             borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           contentPadding: EdgeInsets.symmetric(
-              horizontal: AppSizes.m, vertical: AppSizes.m),
+            horizontal: AppSizes.m,
+            vertical: AppSizes.m,
+          ),
         ),
       ),
     );
   }
 
-  Widget _cancelBtn(VoidCallback onPressed) => OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.grey[200]!),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusL)),
-          padding: EdgeInsets.symmetric(vertical: AppSizes.m),
-        ),
-        child: Text('Cancel',
-            style: TextStyle(
-                color: Colors.grey[500],
-                fontFamily: 'Rubik',
-                fontWeight: FontWeight.w600)),
-      );
+  String _fmtAmt(double v) =>
+      v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
 
-  Widget _primaryBtn(String label, VoidCallback onPressed,
-          {Color color = AppColors.primary}) =>
-      ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppSizes.radiusL)),
-          padding: EdgeInsets.symmetric(vertical: AppSizes.m),
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: color == AppColors.myGreen
-                    ? AppColors.primary
-                    : Colors.white,
-                fontFamily: 'Rubik',
-                fontWeight: FontWeight.w600)),
-      );
+  Widget _cancelBtn(VoidCallback onPressed) => OutlinedButton(
+    onPressed: onPressed,
+    style: OutlinedButton.styleFrom(
+      side: BorderSide(color: Colors.grey[200]!),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+      ),
+      padding: EdgeInsets.symmetric(vertical: AppSizes.m),
+    ),
+    child: Text(
+      'Cancel',
+      style: TextStyle(
+        color: Colors.grey[500],
+        fontFamily: 'Rubik',
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+
+  Widget _primaryBtn(
+    String label,
+    VoidCallback onPressed, {
+    Color color = AppColors.primary,
+  }) => ElevatedButton(
+    onPressed: onPressed,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: color,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+      ),
+      padding: EdgeInsets.symmetric(vertical: AppSizes.m),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: color == AppColors.myGreen ? AppColors.primary : Colors.white,
+        fontFamily: 'Rubik',
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 
   // ── Build ────────────────────────────────────────────────────────────────────
   @override
@@ -463,15 +577,14 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     // Filter
     final filtered = _categoryFilter == null
         ? expenses
-        : expenses
-            .where((e) => displayCat(e) == _categoryFilter)
-            .toList();
+        : expenses.where((e) => displayCat(e) == _categoryFilter).toList();
 
     // Summary (always all bills)
     final paidCount = expenses.where((e) => e.isPaid).length;
-    final totalAmount = expenses.fold<int>(0, (s, e) => s + e.amount);
-    final paidAmount =
-        expenses.where((e) => e.isPaid).fold<int>(0, (s, e) => s + e.amount);
+    final totalAmount = expenses.fold<double>(0, (s, e) => s + e.amount);
+    final paidAmount = expenses
+        .where((e) => e.isPaid)
+        .fold<double>(0, (s, e) => s + e.amount);
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -480,8 +593,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: AppColors.primary, size: AppSizes.iconM),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.primary,
+            size: AppSizes.iconM,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -505,24 +621,31 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       color: AppColors.primary.withValues(alpha: 0.07),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.receipt_long_outlined,
-                        color: AppColors.primary, size: AppSizes.xxl),
+                    child: Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppColors.primary,
+                      size: AppSizes.xxl,
+                    ),
                   ),
                   SizedBox(height: AppSizes.m),
                   Text(
                     AppStrings.noBillsYet,
                     style: TextStyle(
-                        fontFamily: 'Rubik',
-                        fontSize: AppSizes.fontL,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary),
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontL,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
                   SizedBox(height: AppSizes.s),
-                  Text('Tap + to add a bill',
-                      style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontS,
-                          color: Colors.grey[400])),
+                  Text(
+                    'Tap + to add a bill',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontS,
+                      color: Colors.grey[400],
+                    ),
+                  ),
                 ],
               ),
             )
@@ -531,10 +654,16 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                 // ── Summary ─────────────────────────────────────────
                 Padding(
                   padding: EdgeInsets.fromLTRB(
-                      AppSizes.m, 0, AppSizes.m, AppSizes.s),
+                    AppSizes.m,
+                    0,
+                    AppSizes.m,
+                    AppSizes.s,
+                  ),
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: AppSizes.m, vertical: AppSizes.m),
+                      horizontal: AppSizes.m,
+                      vertical: AppSizes.m,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(AppSizes.radiusL),
@@ -549,24 +678,29 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                     child: Row(
                       children: [
                         _summaryTile(
-                            label: 'Total',
-                            value: '$totalAmount $currency',
-                            color: AppColors.primary),
+                          label: 'Total',
+                          value: '${_fmtAmt(totalAmount)} $currency',
+                          color: AppColors.primary,
+                        ),
                         _vDivider(),
                         _summaryTile(
-                            label: 'Paid',
-                            value: '$paidAmount $currency',
-                            color: AppColors.myGreen),
+                          label: 'Paid',
+                          value: '${_fmtAmt(paidAmount)} $currency',
+                          color: AppColors.myGreen,
+                        ),
                         _vDivider(),
                         _summaryTile(
-                            label: 'Remaining',
-                            value: '${totalAmount - paidAmount} $currency',
-                            color: AppColors.myRed),
+                          label: 'Remaining',
+                          value:
+                              '${_fmtAmt(totalAmount - paidAmount)} $currency',
+                          color: AppColors.myRed,
+                        ),
                         _vDivider(),
                         _summaryTile(
-                            label: 'Done',
-                            value: '$paidCount / ${expenses.length}',
-                            color: Colors.blueAccent),
+                          label: 'Done',
+                          value: '$paidCount / ${expenses.length}',
+                          color: Colors.blueAccent,
+                        ),
                       ],
                     ),
                   ),
@@ -581,12 +715,22 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
                       children: [
                         // All chip
-                        _filterChip('All', null, Icons.grid_view_rounded,
-                            Colors.grey, usedCatNames),
+                        _filterChip(
+                          'All',
+                          null,
+                          Icons.grid_view_rounded,
+                          Colors.grey,
+                          usedCatNames,
+                        ),
                         ...usedCatNames.map((name) {
                           final cat = catFor(name);
                           return _filterChip(
-                              name, name, cat.icon, cat.color, usedCatNames);
+                            name,
+                            name,
+                            cat.icon,
+                            cat.color,
+                            usedCatNames,
+                          );
                         }),
                       ],
                     ),
@@ -601,24 +745,24 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                           child: Text(
                             'No bills in this category',
                             style: TextStyle(
-                                fontFamily: 'Rubik',
-                                fontSize: AppSizes.fontS,
-                                color: Colors.grey[400]),
+                              fontFamily: 'Rubik',
+                              fontSize: AppSizes.fontS,
+                              color: Colors.grey[400],
+                            ),
                           ),
                         )
                       : ListView.builder(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: AppSizes.m),
+                          padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
                           itemCount: filtered.length,
                           itemBuilder: (context, i) {
                             final item = filtered[i];
                             // Real index in the full list (for notifier calls)
-                            final realIndex =
-                                expenses.indexWhere((e) => e.id == item.id);
+                            final realIndex = expenses.indexWhere(
+                              (e) => e.id == item.id,
+                            );
                             return Padding(
                               key: ValueKey(item.id),
-                              padding:
-                                  EdgeInsets.only(bottom: AppSizes.s + 4),
+                              padding: EdgeInsets.only(bottom: AppSizes.s + 4),
                               child: SlidableExpenseCard(
                                 item: item,
                                 currency: currency,
@@ -628,10 +772,13 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                                 },
                                 onClosed: () => _closeOpenCard = null,
                                 onEdit: () => _showBottomSheet(
-                                    item: item, index: realIndex),
+                                  item: item,
+                                  index: realIndex,
+                                ),
                                 onDelete: () async {
-                                  final confirmed =
-                                      await _confirmDelete(context);
+                                  final confirmed = await _confirmDelete(
+                                    context,
+                                  );
                                   if (confirmed) {
                                     ref
                                         .read(expensesProvider.notifier)
@@ -641,7 +788,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                                 onTap: item.isPaid
                                     ? null
                                     : () => _showBottomSheet(
-                                        item: item, index: realIndex),
+                                        item: item,
+                                        index: realIndex,
+                                      ),
                                 onCheckTap: item.isPaid
                                     ? null
                                     : () => _showConfirmPaid(realIndex),
@@ -662,8 +811,13 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     );
   }
 
-  Widget _filterChip(String label, String? value, IconData icon, Color color,
-      List<String> usedCats) {
+  Widget _filterChip(
+    String label,
+    String? value,
+    IconData icon,
+    Color color,
+    List<String> usedCats,
+  ) {
     final selected = _categoryFilter == value;
     return GestureDetector(
       onTap: () => setState(() => _categoryFilter = value),
@@ -671,7 +825,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         duration: const Duration(milliseconds: 180),
         margin: EdgeInsets.only(right: AppSizes.s),
         padding: EdgeInsets.symmetric(
-            horizontal: AppSizes.m, vertical: AppSizes.xs + 2),
+          horizontal: AppSizes.m,
+          vertical: AppSizes.xs + 2,
+        ),
         decoration: BoxDecoration(
           color: selected ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.radiusXL),
@@ -685,11 +841,13 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                size: 14,
-                color: selected
-                    ? Colors.white
-                    : (value == null ? Colors.grey[400] : color)),
+            Icon(
+              icon,
+              size: 14,
+              color: selected
+                  ? Colors.white
+                  : (value == null ? Colors.grey[400] : color),
+            ),
             SizedBox(width: AppSizes.xs + 2),
             Text(
               label,
@@ -706,28 +864,34 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     );
   }
 
-  Widget _summaryTile(
-          {required String label,
-          required String value,
-          required Color color}) =>
-      Expanded(
-        child: Column(
-          children: [
-            Text(value,
-                style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: AppSizes.fontS,
-                    fontWeight: FontWeight.bold,
-                    color: color)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: 10,
-                    color: Colors.grey[400])),
-          ],
+  Widget _summaryTile({
+    required String label,
+    required String value,
+    required Color color,
+  }) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            fontSize: AppSizes.fontS,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
-      );
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            fontSize: 10,
+            color: Colors.grey[400],
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _vDivider() =>
       Container(width: 1, height: 32, color: Colors.grey[100]);

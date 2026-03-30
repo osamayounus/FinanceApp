@@ -305,7 +305,7 @@ class ExpenseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${item.amount} $currency',
+                        '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount.toStringAsFixed(2)} $currency',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontXXL - 2,

@@ -270,28 +270,28 @@ class AppDatabase {
         .map((e) => ExpenseModel(
               id: e['id'] as int,
               name: e['name'] as String,
-              amount: (e['amount'] as num).toInt(),
+              amount: (e['amount'] as num).toDouble(),
               isPaid: (e['is_paid'] as int) == 1,
               category: e['category'] as String? ?? '',
             ))
         .toList();
   }
 
-  Future<int> insertBill(String name, int amount, String category) async {
+  Future<int> insertBill(String name, double amount, String category) async {
     final db = await database;
     return db.insert('bills', {
       'name': name,
-      'amount': amount.toDouble(),
+      'amount': amount,
       'is_paid': 0,
       'category': category,
     });
   }
 
-  Future<void> updateBill(int id, String name, int amount, String category) async {
+  Future<void> updateBill(int id, String name, double amount, String category) async {
     final db = await database;
     await db.update(
       'bills',
-      {'name': name, 'amount': amount.toDouble(), 'category': category},
+      {'name': name, 'amount': amount, 'category': category},
       where: 'id = ?',
       whereArgs: [id],
     );

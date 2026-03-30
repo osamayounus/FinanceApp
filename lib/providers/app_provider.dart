@@ -203,12 +203,12 @@ class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
   final AppDatabase _db;
   BillsNotifier(this._db, List<ExpenseModel> initial) : super(initial);
 
-  Future<void> add(String name, int amount, String category) async {
+  Future<void> add(String name, double amount, String category) async {
     final id = await _db.insertBill(name, amount, category);
     state = [...state, ExpenseModel(id: id, name: name, amount: amount, category: category)];
   }
 
-  Future<void> edit(int index, String name, int amount, String category) async {
+  Future<void> edit(int index, String name, double amount, String category) async {
     await _db.updateBill(state[index].id, name, amount, category);
     state = [
       for (int i = 0; i < state.length; i++)

@@ -1,7 +1,7 @@
 class ExpenseModel {
   final int id;
   final String name;
-  final int amount;
+  final double amount;
   final bool isPaid;
   final String category;
 
@@ -13,7 +13,7 @@ class ExpenseModel {
     this.category = '',
   });
 
-  ExpenseModel copyWith({String? name, int? amount, bool? isPaid, String? category}) {
+  ExpenseModel copyWith({String? name, double? amount, bool? isPaid, String? category}) {
     return ExpenseModel(
       id: id,
       name: name ?? this.name,

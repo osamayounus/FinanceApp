@@ -1,7 +1,7 @@
 class ProfileModel {
   final String name;
-  final int income;
-  final int expenses;
+  final double income;
+  final double expenses;
 
   const ProfileModel({
     required this.name,
@@ -9,7 +9,7 @@ class ProfileModel {
     required this.expenses,
   });
 
-  ProfileModel copyWith({String? name, int? income, int? expenses}) {
+  ProfileModel copyWith({String? name, double? income, double? expenses}) {
     return ProfileModel(
       name: name ?? this.name,
       income: income ?? this.income,
