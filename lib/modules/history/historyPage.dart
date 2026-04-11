@@ -9,6 +9,7 @@ import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -129,14 +130,18 @@ class _HistorypageState extends ConsumerState<Historypage> {
                               return _MonthHeader(label: item.month!);
                             }
                             final tx = item.tx!;
-                            return TransactionCard(
-                              type: _txDisplayType(tx.type),
-                              amount: tx.amount,
-                              description: tx.title.isNotEmpty
-                                  ? tx.title
-                                  : _txDisplayType(tx.type),
-                              subtitle: _txSubtitle(tx),
-                              dateTime: tx.createdAt,
+                            return GestureDetector(
+                              onTap: () => _showTxDetail(tx),
+                              child: TransactionCard(
+                                type: _txDisplayType(tx.type),
+                                amount: tx.amount,
+                                description: tx.title.isNotEmpty
+                                    ? tx.title
+                                    : _txDisplayType(tx.type),
+                                subtitle: _txSubtitle(tx),
+                                note: _userNote(tx),
+                                dateTime: tx.createdAt,
+                              ),
                             );
                           },
                         ),
@@ -145,6 +150,208 @@ class _HistorypageState extends ConsumerState<Historypage> {
         ),
       ),
     );
+  }
+
+  void _showTxDetail(TransactionModel tx) {
+    final displayType = _txDisplayType(tx.type);
+    final subtitle = _txSubtitle(tx);
+    final note = _userNote(tx);
+    final currency = ref.read(currencyProvider);
+
+    final isDeposit = displayType == 'Deposit';
+    final isWithdraw = displayType == 'Withdraw';
+    final iconData = isDeposit
+        ? Icons.arrow_downward_rounded
+        : isWithdraw
+            ? Icons.arrow_upward_rounded
+            : Icons.swap_horiz_rounded;
+    final accentColor = isDeposit
+        ? AppColors.myGreen
+        : isWithdraw
+            ? AppColors.myRed
+            : Colors.blueAccent;
+    final sign = isDeposit ? '+ ' : isWithdraw ? '- ' : '';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppSizes.radiusXXL)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+            AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: AppSizes.handleBarWidth,
+                height: AppSizes.handleBarHeight,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            SizedBox(height: AppSizes.l),
+
+            // Icon + Title + Amount
+            Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                  ),
+                  child: Icon(iconData, color: accentColor, size: AppSizes.iconL),
+                ),
+                SizedBox(width: AppSizes.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tx.title.isNotEmpty ? tx.title : displayType,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontXXL,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Text(
+                        displayType,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontXS,
+                          fontWeight: FontWeight.w600,
+                          color: accentColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$sign${fmtAmt(tx.amount, currency)}',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontXXL,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: AppSizes.l),
+            Divider(color: Colors.grey[100], height: 1),
+            SizedBox(height: AppSizes.s),
+
+            // Detail rows
+            _detailRow(Icons.calendar_today_rounded, 'Date',
+                _formatDateFull(tx.createdAt)),
+            if (subtitle != null)
+              _detailRow(Icons.compare_arrows_rounded, 'Account',
+                  subtitle),
+            if (note != null)
+              _detailRow(Icons.notes_rounded, 'Note', note),
+
+            SizedBox(height: AppSizes.m),
+
+            // Close button
+            SizedBox(
+              width: double.infinity,
+              height: AppSizes.buttonHeight,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.pageBackground,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppSizes.radiusXL)),
+                ),
+                child: Text(
+                  'Close',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontM,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: AppSizes.s - 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.pageBackground,
+              borderRadius: BorderRadius.circular(AppSizes.radiusS),
+            ),
+            child: Icon(icon, color: Colors.grey[400], size: AppSizes.iconS),
+          ),
+          SizedBox(width: AppSizes.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 11,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateFull(DateTime dt) {
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final hour = dt.hour > 12
+        ? dt.hour - 12
+        : (dt.hour == 0 ? 12 : dt.hour);
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${months[dt.month]} ${dt.day}, ${dt.year}  ·  '
+        '$hour:${dt.minute.toString().padLeft(2, '0')} $ampm';
   }
 
   Widget _emptyState() {
@@ -201,6 +408,19 @@ class _HistorypageState extends ConsumerState<Historypage> {
       default:
         return 'Deposit';
     }
+  }
+
+  /// Extracts the user-entered note from tx.note.
+  /// Transfers embed the counterpart account name after '\x00'; we strip it.
+  /// System-generated notes (bill_paid, salary, initial) return null.
+  String? _userNote(TransactionModel tx) {
+    if (tx.type == 'bill_paid' || tx.type == 'salary' || tx.type == 'initial') {
+      return null;
+    }
+    final raw = tx.type == 'transfer_in' || tx.type == 'transfer_out'
+        ? tx.note.split('\x00').first
+        : tx.note;
+    return raw.isNotEmpty ? raw : null;
   }
 
   /// Returns a "From X" / "To X" subtitle for transfer transactions.

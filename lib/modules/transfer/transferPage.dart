@@ -43,6 +43,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
   final _amountCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  DateTime? _customDate;
 
   @override
   void initState() {
@@ -126,7 +127,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
         ? _titleCtrl.text.trim()
         : AppStrings.transfer;
     final note = _noteCtrl.text.trim();
-    final now = DateTime.now();
+    final now = _customDate ?? DateTime.now();
     final amountStr = amount % 1 == 0
         ? amount.toInt().toString()
         : amount.toStringAsFixed(2);
@@ -404,6 +405,11 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                       label: AppStrings.noteOptional,
                       hint: 'Additional details...',
                       icon: Icons.notes_rounded,
+                    ),
+                    SizedBox(height: AppSizes.s),
+                    DateTimePickerField(
+                      value: _customDate,
+                      onChanged: (d) => setState(() => _customDate = d),
                     ),
                   ],
                 ),

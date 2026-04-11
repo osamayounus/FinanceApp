@@ -229,6 +229,119 @@ class LightButton extends StatelessWidget {
   }
 }
 
+// ── Date & Time picker field ──────────────────────────────────────────────────
+
+/// Tappable field that shows the selected [value] as a formatted date/time,
+/// or "Now · Auto" when [value] is null (meaning use DateTime.now() at submit).
+/// Opens DatePicker → TimePicker on tap; shows an × button to reset to auto.
+class DateTimePickerField extends StatelessWidget {
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+
+  const DateTimePickerField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+
+  Future<void> _pick(BuildContext context) async {
+    final initial = value ?? DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (date == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (time == null) return;
+    onChanged(DateTime(
+        date.year, date.month, date.day, time.hour, time.minute));
+  }
+
+  String _fmt(DateTime dt) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final hour =
+        dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${months[dt.month]} ${dt.day}, ${dt.year}  ·  '
+        '$hour:${dt.minute.toString().padLeft(2, '0')} $ampm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasValue = value != null;
+    return GestureDetector(
+      onTap: () => _pick(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.pageBackground,
+          borderRadius: BorderRadius.circular(AppSizes.radiusL),
+        ),
+        padding: EdgeInsets.symmetric(
+            horizontal: AppSizes.m, vertical: AppSizes.m),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded,
+                color: Colors.grey[400], size: AppSizes.iconM),
+            SizedBox(width: AppSizes.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Date & Time',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: 11,
+                      color: Colors.grey[400],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasValue ? _fmt(value!) : 'Now  ·  Auto',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontM,
+                      color: hasValue ? AppColors.primary : Colors.grey[400],
+                      fontWeight:
+                          hasValue ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (hasValue)
+              GestureDetector(
+                onTap: () => onChanged(null),
+                child: Icon(Icons.close_rounded,
+                    color: Colors.grey[400], size: AppSizes.iconS),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class DarkButton extends StatelessWidget {
   final double width;
   final String text;

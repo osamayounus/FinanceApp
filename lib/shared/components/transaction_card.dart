@@ -12,6 +12,7 @@ class TransactionCard extends ConsumerWidget {
   final double amount;
   final String description;
   final String? subtitle;
+  final String? note;
   final DateTime dateTime;
 
   const TransactionCard({
@@ -20,6 +21,7 @@ class TransactionCard extends ConsumerWidget {
     required this.amount,
     required this.description,
     this.subtitle,
+    this.note,
     required this.dateTime,
   });
 
@@ -82,6 +84,32 @@ class TransactionCard extends ConsumerWidget {
                       fontWeight: FontWeight.w500,
                       color: Colors.blueAccent.withValues(alpha: 0.8),
                     ),
+                  ),
+                ],
+                if (note != null && note!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.notes_rounded,
+                        size: 11,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(width: 3),
+                      Expanded(
+                        child: Text(
+                          note!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: AppSizes.fontXS,
+                            color: Colors.grey[400],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 3),

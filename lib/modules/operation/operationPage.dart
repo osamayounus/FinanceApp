@@ -43,6 +43,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
   final _amountCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  DateTime? _customDate;
 
   @override
   void dispose() {
@@ -87,7 +88,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       amount: amount,
       title: title,
       note: note,
-      createdAt: DateTime.now(),
+      createdAt: _customDate ?? DateTime.now(),
     );
 
     bool success;
@@ -190,6 +191,8 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                   amountCtrl: _amountCtrl,
                   titleCtrl: _titleCtrl,
                   noteCtrl: _noteCtrl,
+                  customDate: _customDate,
+                  onDateChanged: (d) => setState(() => _customDate = d),
                   onBack: _back,
                   onConfirm: _confirm,
                 ),
@@ -329,6 +332,8 @@ class _StepAmount extends StatelessWidget {
   final TextEditingController amountCtrl;
   final TextEditingController titleCtrl;
   final TextEditingController noteCtrl;
+  final DateTime? customDate;
+  final ValueChanged<DateTime?> onDateChanged;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
 
@@ -339,6 +344,8 @@ class _StepAmount extends StatelessWidget {
     required this.amountCtrl,
     required this.titleCtrl,
     required this.noteCtrl,
+    required this.customDate,
+    required this.onDateChanged,
     required this.onBack,
     required this.onConfirm,
   });
@@ -438,6 +445,13 @@ class _StepAmount extends StatelessWidget {
             label: AppStrings.noteOptional,
             hint: 'Additional details...',
             icon: Icons.notes_rounded,
+          ),
+          SizedBox(height: AppSizes.s + 4),
+
+          // Date & Time
+          DateTimePickerField(
+            value: customDate,
+            onChanged: onDateChanged,
           ),
           SizedBox(height: AppSizes.l),
 
