@@ -86,11 +86,11 @@ class AppStrings {
   static const String editSalary = 'Edit Salary';
   static const String editMonthlyBudget = 'Edit Monthly Budget';
   static const String sectionDangerZone = 'DANGER ZONE';
-  static const String resetAppData = 'Reset App Data';
-  static const String eraseEverythingSubtitle = 'Erase everything and start over';
-  static const String resetApp = 'Reset App';
+  static const String resetAppData = 'Reset Current Profile';
+  static const String eraseEverythingSubtitle = 'Erase this profile\'s data and start over';
+  static const String resetApp = 'Reset Profile';
   static const String resetConfirmBody =
-      'This will erase all your data — accounts, transactions, bills, and settings. You will need to set up the app again.\n\nThis cannot be undone.';
+      'This will erase all data for this profile — accounts, transactions, bills, and settings. Other profiles will not be affected.\n\nThis cannot be undone.';
   static const String reset = 'Reset';
 
   // ── Fixed Expenses ────────────────────────────────────────────────────────
@@ -134,6 +134,10 @@ class AppStrings {
   static const String noTransactions = 'No transactions yet';
   static const String historyEmptySubtitle = 'Your history will appear here.';
   static const String deletedAccount = 'Deleted Account';
+
+  // ── Multi-profile ─────────────────────────────────────────────────────────
+  static const String switchProfile = 'Switch Profile';
+  static const String switchProfileSubtitle = 'Switch between your profiles';
 
   // ── Custom Account Detail ─────────────────────────────────────────────────
   static const String accountDetails = 'Account Details';

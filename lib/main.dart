@@ -1,27 +1,37 @@
 // ── main.dart ─────────────────────────────────────────────────────────────────
-// App entry point. Reads saved user data from SQLite, then mounts either
-// OnboardingPage (first run) or WalletLayoutPage (returning user) inside a
-// ProviderScope seeded with all initial state. appConfigNotifier drives the
-// root widget rebuild when onboarding completes or data is reset.
+// App entry point. Reads the active profile from ProfileManager, loads its
+// SQLite data, then mounts the correct root widget:
+//   • OnboardingPage  — no profiles exist yet
+//   • ProfilePickerPage — multiple profiles, must choose (e.g. after a reset)
+//   • WalletLayoutPage  — active profile loaded and ready
+//
+// appConfigNotifier drives the root widget rebuild when profiles change.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/layout/walletLayoutPage.dart';
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/expense_model.dart';
+import 'package:financeapp/models/profile_entry.dart';
 import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/modules/onboarding/onboardingPage.dart';
+import 'package:financeapp/modules/profile/profile_picker_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
+import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-// ── App configuration (set before runApp, updated after onboarding) ───────────
+// ── App configuration ─────────────────────────────────────────────────────────
 
 class AppConfig {
   final bool isSetup;
   final bool isFirstRun;
-  final AppDatabase db;
+  /// True when the root should show ProfilePickerPage instead of OnboardingPage.
+  final bool showPicker;
+  final List<ProfileEntry> allProfiles;
+  final int? activeProfileId;
+  final AppDatabase? db;
   final UserModel? user;
   final List<AccountModel> accounts;
   final List<ExpenseModel> bills;
@@ -29,7 +39,10 @@ class AppConfig {
   const AppConfig({
     required this.isSetup,
     this.isFirstRun = false,
-    required this.db,
+    this.showPicker = false,
+    this.allProfiles = const [],
+    this.activeProfileId,
+    this.db,
     this.user,
     this.accounts = const [],
     this.bills = const [],
@@ -37,45 +50,60 @@ class AppConfig {
 }
 
 /// Holds the bootstrapped app state. Updating this value triggers a full
-/// ProviderScope rebuild via [ValueListenableBuilder] in [AppRoot], which is
-/// the mechanism used both after onboarding completes and after a data reset.
-/// A [ValueNotifier] is used (instead of a Riverpod provider) because the
-/// notifier must be readable before the first ProviderScope is mounted.
+/// ProviderScope rebuild via [ValueListenableBuilder] in [AppRoot].
 final appConfigNotifier = ValueNotifier<AppConfig?>(null);
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Custom error screen (replaces the red crash screen)
   ErrorWidget.builder = (details) => _AppErrorWidget(details: details);
 
-  final db = AppDatabase.instance;
-  final hasUser = await db.hasUser();
+  final pm = ProfileManager.instance;
 
-  UserModel? user;
-  List<AccountModel> accounts = [];
-  List<ExpenseModel> bills = [];
+  // Migrate legacy single-DB installs to the per-profile file layout.
+  await pm.migrateIfNeeded();
 
-  if (hasUser) {
-    user = await db.getUser();
-    accounts = await db.getAccounts();
-    bills = await db.getBills();
+  final profiles = await pm.getProfiles();
+  final activeId = await pm.getActiveProfileId();
+
+  if (profiles.isEmpty || activeId == null) {
+    // No profiles or no active selection — onboarding or picker.
+    appConfigNotifier.value = AppConfig(
+      isSetup: false,
+      showPicker: profiles.isNotEmpty,
+      allProfiles: profiles,
+    );
+  } else {
+    final db = AppDatabase.forFile(pm.dbFileFor(activeId));
+    final hasUser = await db.hasUser();
+    if (hasUser) {
+      final user = await db.getUser();
+      final accounts = await db.getAccounts();
+      final bills = await db.getBills();
+      appConfigNotifier.value = AppConfig(
+        isSetup: true,
+        allProfiles: profiles,
+        activeProfileId: activeId,
+        db: db,
+        user: user!,
+        accounts: accounts,
+        bills: bills,
+      );
+    } else {
+      // Active profile ID set but DB is empty — fall back to onboarding.
+      appConfigNotifier.value = AppConfig(
+        isSetup: false,
+        showPicker: profiles.isNotEmpty,
+        allProfiles: profiles,
+      );
+    }
   }
-
-  appConfigNotifier.value = AppConfig(
-    isSetup: hasUser,
-    db: db,
-    user: user,
-    accounts: accounts,
-    bills: bills,
-  );
 
   runApp(const AppRoot());
 }
 
-// ── Root widget — ProviderScope always wraps MaterialApp ──────────────────────
+// ── Root widget ───────────────────────────────────────────────────────────────
 
 class AppRoot extends StatelessWidget {
   const AppRoot({super.key});
@@ -93,29 +121,33 @@ class AppRoot extends StatelessWidget {
           );
         }
 
-        final overrides = <Override>[
-          dbProvider.overrideWithValue(config.db),
-        ];
+        final overrides = <Override>[];
 
-        if (config.isSetup && config.user != null) {
+        if (config.db != null) {
+          overrides.add(dbProvider.overrideWithValue(config.db!));
+        }
+
+        if (config.isSetup && config.user != null && config.db != null) {
           overrides.addAll([
             userProvider.overrideWith(
-                (ref) => UserNotifier(config.db, config.user!)),
+                (ref) => UserNotifier(config.db!, config.user!)),
             accountsProvider.overrideWith(
-                (ref) => AccountsNotifier(config.db, config.accounts)),
+                (ref) => AccountsNotifier(config.db!, config.accounts)),
             expensesProvider.overrideWith(
-                (ref) => BillsNotifier(config.db, config.bills)),
+                (ref) => BillsNotifier(config.db!, config.bills)),
           ]);
         }
 
-        // ValueKey forces Flutter to tear down and recreate the ProviderScope
-        // (and all its providers) whenever isSetup toggles — e.g. after
-        // onboarding finishes or after a full data reset.
+        // Key changes when the active profile changes so ProviderScope and all
+        // its providers are torn down and recreated for the new profile.
+        final scopeKey =
+            ValueKey(config.isSetup ? config.activeProfileId : null);
+
         return ScreenUtilInit(
           designSize: const Size(390, 844),
           minTextAdapt: true,
           child: ProviderScope(
-            key: ValueKey(config.isSetup),
+            key: scopeKey,
             overrides: overrides,
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
@@ -125,7 +157,9 @@ class AppRoot extends StatelessWidget {
               ),
               home: config.isSetup
                   ? const Walletlayoutpage()
-                  : const OnboardingPage(),
+                  : config.showPicker
+                      ? const ProfilePickerPage(canPop: false)
+                      : const OnboardingPage(),
             ),
           ),
         );
@@ -134,7 +168,7 @@ class AppRoot extends StatelessWidget {
   }
 }
 
-// ── Custom error widget (replaces the red crash screen) ───────────────────────
+// ── Custom error widget ───────────────────────────────────────────────────────
 
 class _AppErrorWidget extends StatelessWidget {
   final FlutterErrorDetails details;

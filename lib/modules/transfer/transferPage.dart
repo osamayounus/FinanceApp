@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/transfer/transfer_success_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
@@ -34,6 +35,24 @@ class TransferPage extends ConsumerStatefulWidget {
   ConsumerState<TransferPage> createState() => _TransferPageState();
 }
 
+// Holds snapshot of a completed transfer — triggers success screen in-place.
+class _SuccessData {
+  final double amount;
+  final String currency;
+  final String fromName;
+  final IconData fromIcon;
+  final String toName;
+  final IconData toIcon;
+  const _SuccessData({
+    required this.amount,
+    required this.currency,
+    required this.fromName,
+    required this.fromIcon,
+    required this.toName,
+    required this.toIcon,
+  });
+}
+
 class _TransferPageState extends ConsumerState<TransferPage> {
   // IDs of the selected source and destination accounts.
   // Initialised to Wallet → Savings as the most common transfer direction.
@@ -44,6 +63,9 @@ class _TransferPageState extends ConsumerState<TransferPage> {
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   DateTime? _customDate;
+
+  // Non-null when the success screen should be shown inside this page.
+  _SuccessData? _successData;
 
   @override
   void initState() {
@@ -123,15 +145,34 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       return;
     }
 
+    // Validate balance synchronously so we can still show the error on this page.
+    final fromBalance =
+        ref.read(accountsProvider).firstWhere((a) => a.id == _fromId).balance;
+    if (fromBalance < amount) {
+      AppToast.error(messenger, 'Insufficient balance in ${fromAcc.name}');
+      return;
+    }
+
     final title = _titleCtrl.text.trim().isNotEmpty
         ? _titleCtrl.text.trim()
         : AppStrings.transfer;
     final note = _noteCtrl.text.trim();
     final now = _customDate ?? DateTime.now();
-    final amountStr = amount % 1 == 0
-        ? amount.toInt().toString()
-        : amount.toStringAsFixed(2);
+    final currency = ref.read(currencyProvider);
 
+    // Show success screen in-place immediately — no navigator, no waiting.
+    if (!mounted) return;
+    setState(() => _successData = _SuccessData(
+          amount: amount,
+          currency: currency,
+          fromName: fromAcc.name,
+          fromIcon: fromAcc.icon,
+          toName: toAcc.name,
+          toIcon: toAcc.icon,
+        ));
+
+    // Fire the actual transfer in the background — balance was already
+    // validated above so this will not fail due to insufficient funds.
     // Embed the counterpart account name after a null separator so history
     // can show the correct name even if the account is later deleted.
     final txOut = TransactionModel(
@@ -154,28 +195,31 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       relatedAccountId: _fromId,
       createdAt: now,
     );
-
-    final success = await ref.read(accountsProvider.notifier).transfer(
+    ref.read(accountsProvider.notifier).transfer(
           fromId: _fromId,
           toId: _toId,
           amount: amount,
           txOut: txOut,
           txIn: txIn,
         );
-
-    if (!mounted) return;
-    if (!success) {
-      AppToast.error(messenger, 'Insufficient balance in ${fromAcc.name}');
-      return;
-    }
-
-    final currency = ref.read(currencyProvider);
-    AppToast.success(messenger, '$amountStr $currency transferred to ${toAcc.name}');
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show success screen in-place when transfer completes.
+    if (_successData != null) {
+      final d = _successData!;
+      return TransferSuccessPage(
+        amount: d.amount,
+        currency: d.currency,
+        fromName: d.fromName,
+        fromIcon: d.fromIcon,
+        toName: d.toName,
+        toIcon: d.toIcon,
+        onDone: () => Navigator.pop(context),
+      );
+    }
+
     final currency = ref.watch(currencyProvider);
     final allAccounts = ref.watch(accountsProvider);
     final accList = [

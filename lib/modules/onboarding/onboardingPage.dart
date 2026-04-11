@@ -6,23 +6,26 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
 import 'package:financeapp/models/user_model.dart';
-import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/networks/local/database.dart';
+import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OnboardingPage extends ConsumerStatefulWidget {
-  const OnboardingPage({super.key});
+class OnboardingPage extends StatefulWidget {
+  /// True only when this is the very first profile ever created on the device.
+  /// Controls whether the home tutorial is shown after onboarding completes.
+  final bool isFirstProfile;
+  const OnboardingPage({super.key, this.isFirstProfile = true});
 
   @override
-  ConsumerState<OnboardingPage> createState() => _OnboardingPageState();
+  State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageState extends ConsumerState<OnboardingPage> {
+class _OnboardingPageState extends State<OnboardingPage> {
   int _step = 0;
   bool _loading = false;
   String? _errorMessage;
@@ -55,8 +58,16 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
     setState(() => _loading = true);
 
-    final db = ref.read(dbProvider);
-    final user = UserModel(id: 1, name: name, salary: salary, monthlyBudget: budget, currency: _currency);
+    final pm = ProfileManager.instance;
+
+    // Create a new profile entry (enforces max-3 at the UI level before this).
+    final profile = await pm.createProfile(name);
+    await pm.setActiveProfileId(profile.id);
+
+    // Open the per-profile DB and seed it with the user's data.
+    final db = AppDatabase.forFile(pm.dbFileFor(profile.id));
+    final user = UserModel(
+        id: 1, name: name, salary: salary, monthlyBudget: budget, currency: _currency);
     await db.insertUser(user);
     await db.initAccounts(
       initialSavings: savings,
@@ -66,12 +77,14 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
     final accounts = await db.getAccounts();
     final bills = await db.getBills();
+    final allProfiles = await pm.getProfiles();
 
     // Update global config — AppRoot rebuilds ProviderScope with real data.
-    // No nested navigation needed; the MaterialApp's home switches automatically.
     appConfigNotifier.value = AppConfig(
       isSetup: true,
-      isFirstRun: true,
+      isFirstRun: widget.isFirstProfile,
+      allProfiles: allProfiles,
+      activeProfileId: profile.id,
       db: db,
       user: user,
       accounts: accounts,

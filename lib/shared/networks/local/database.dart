@@ -7,21 +7,36 @@ import 'package:financeapp/models/user_model.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Singleton data-access layer for the local SQLite database.
-/// All reads/writes go through this class; no raw SQL lives elsewhere.
+/// Per-profile data-access layer for a SQLite database.
+/// Each user profile owns a separate file (e.g. finance_1.db).
+/// Instances are cached by filename so the same file is never opened twice.
 class AppDatabase {
-  static AppDatabase? _instance;
-  static Database? _db;
+  // ── Instance cache ────────────────────────────────────────────────────────
+  static final _instances = <String, AppDatabase>{};
 
-  AppDatabase._();
+  /// Returns (or creates) the AppDatabase for a given file name.
+  static AppDatabase forFile(String fileName) =>
+      _instances.putIfAbsent(fileName, () => AppDatabase._(fileName));
 
-  /// Returns the process-wide singleton. Created lazily on first access.
-  static AppDatabase get instance => _instance ??= AppDatabase._();
+  final String _fileName;
+  Database? _db;
+
+  AppDatabase._(this._fileName);
 
   Future<Database> get database async {
     if (_db != null) return _db!;
     _db = await _openDB();
     return _db!;
+  }
+
+  /// Closes the underlying SQLite connection and removes this instance from
+  /// the cache. Call before deleting the file (e.g. on profile reset).
+  Future<void> close() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+    _instances.remove(_fileName);
   }
 
   Future<Database> _openDB() async {
@@ -32,7 +47,7 @@ class AppDatabase {
       databaseFactory = databaseFactoryFfi;
     }
     final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'finance.db');
+    final path = join(dbPath, _fileName);
     return openDatabase(
       path,
       version: 7,

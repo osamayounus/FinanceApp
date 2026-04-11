@@ -4,8 +4,10 @@
 // resetting all app data back to the onboarding state.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
+import 'package:financeapp/modules/profile/profile_picker_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
@@ -83,13 +85,34 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _resetting = true);
+
+    final pm = ProfileManager.instance;
+    final activeId = await pm.getActiveProfileId();
+
+    // Wipe current profile's data.
     final db = ref.read(dbProvider);
     await db.resetDatabase();
+    await db.close();
 
+    // Remove the profile entry and clear active selection.
+    if (activeId != null) await pm.deleteProfile(activeId);
+    await pm.clearActiveProfile();
+
+    // Remaining profiles → show picker; none left → onboarding.
+    final remaining = await pm.getProfiles();
     appConfigNotifier.value = AppConfig(
       isSetup: false,
-      isFirstRun: false,
-      db: db,
+      showPicker: remaining.isNotEmpty,
+      allProfiles: remaining,
+    );
+  }
+
+  void _switchProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ProfilePickerPage(canPop: true),
+      ),
     );
   }
 
@@ -269,6 +292,79 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              SizedBox(height: AppSizes.l),
+
+              // ── Switch profile ───────────────────────────────────
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _switchProfile,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppSizes.m, vertical: AppSizes.m),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.blueIconBg,
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusM),
+                            ),
+                            child: Icon(
+                              Icons.switch_account_rounded,
+                              color: AppColors.blueIcon,
+                              size: AppSizes.iconM,
+                            ),
+                          ),
+                          SizedBox(width: AppSizes.m),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppStrings.switchProfile,
+                                  style: TextStyle(
+                                    fontSize: AppSizes.fontM,
+                                    fontFamily: 'Rubik',
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  AppStrings.switchProfileSubtitle,
+                                  style: TextStyle(
+                                    fontSize: AppSizes.fontXS,
+                                    fontFamily: 'Rubik',
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded,
+                              color: Colors.grey[300], size: 22),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(height: AppSizes.l),

@@ -5,8 +5,8 @@
 // Also triggers the first-run tutorial overlay via AppConfig.isFirstRun.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:card_swiper/card_swiper.dart';
-import 'package:financeapp/main.dart';
 import 'package:financeapp/modules/home/cards/customAccountCard.dart';
+import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/modules/home/cards/incomeCard.dart';
 import 'package:financeapp/modules/home/sheets/add_account_sheet.dart';
 import 'package:financeapp/modules/home/cards/monthlyExpCard.dart';
@@ -54,8 +54,12 @@ class _HomepageState extends ConsumerState<Homepage> {
     super.dispose();
   }
 
-  void _maybeShowTutorial() {
-    if (appConfigNotifier.value?.isFirstRun != true) return;
+  Future<void> _maybeShowTutorial() async {
+    final seen = await ProfileManager.instance.hasTutorialSeen('home');
+    if (seen || !mounted) return;
+    await ProfileManager.instance.markTutorialSeen('home');
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _showTutorial();
   }
 
@@ -97,19 +101,6 @@ class _HomepageState extends ConsumerState<Homepage> {
       ),
     );
     Overlay.of(context).insert(_tutorialEntry!);
-
-    // Mark as seen so it never shows again this session
-    if (appConfigNotifier.value != null) {
-      final v = appConfigNotifier.value!;
-      appConfigNotifier.value = AppConfig(
-        isSetup: v.isSetup,
-        isFirstRun: false,
-        db: v.db,
-        user: v.user,
-        accounts: v.accounts,
-        bills: v.bills,
-      );
-    }
   }
 
   String get _greeting {
