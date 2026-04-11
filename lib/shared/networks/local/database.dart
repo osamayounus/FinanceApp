@@ -35,7 +35,7 @@ class AppDatabase {
     final path = join(dbPath, 'finance.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -67,6 +67,21 @@ class AppDatabase {
       // Per-user currency preference added in v5; defaults to JOD for existing installs
       await db.execute("ALTER TABLE user ADD COLUMN currency TEXT NOT NULL DEFAULT 'JOD'");
     }
+    if (oldVersion < 6) {
+      // Per-user currency preference (already handled in v5 block above —
+      // this block intentionally left empty for version-gap safety).
+    }
+    if (oldVersion < 7) {
+      // Debt/loan tracking: stores the total amount lent out per account.
+      // Wrapped in try-catch so re-running after a partial v6 migration
+      // (where the version was bumped but the column was not added) is safe.
+      try {
+        await db.execute(
+            'ALTER TABLE accounts ADD COLUMN loaned_amount REAL DEFAULT 0.0');
+      } catch (_) {
+        // Column already exists — nothing to do.
+      }
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -84,6 +99,7 @@ class AppDatabase {
         id INTEGER PRIMARY KEY,
         type TEXT NOT NULL,
         balance REAL NOT NULL DEFAULT 0.0,
+        loaned_amount REAL DEFAULT 0.0,
         custom_name TEXT,
         color_index INTEGER,
         icon_code INTEGER
@@ -199,6 +215,12 @@ class AppDatabase {
   Future<void> updateBalance(int accountId, double balance) async {
     final db = await database;
     await db.update('accounts', {'balance': balance},
+        where: 'id = ?', whereArgs: [accountId]);
+  }
+
+  Future<void> updateLoanedAmount(int accountId, double loaned) async {
+    final db = await database;
+    await db.update('accounts', {'loaned_amount': loaned},
         where: 'id = ?', whereArgs: [accountId]);
   }
 

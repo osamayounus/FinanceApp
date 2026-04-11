@@ -21,8 +21,8 @@ class AppStrings {
   static const String goodAfternoon = '☀️ Good afternoon,';
   static const String goodEvening = '🌙 Good evening,';
   static const String howItWorks = 'How it works';
-  static const String addIncomeExpense = 'Add Income / Expense';
-  static const String transfer = 'Transfer';
+  static const String addIncomeExpense = 'Add';
+  static const String transfer = 'Move';
   static const String newAccount = 'New Account';
   static const String accountName = 'Account name';
   static const String color = 'Color';
@@ -57,10 +57,10 @@ class AppStrings {
   static const String tutAddAccount = 'Add Account';
   static const String tutAddAccountBody =
       'Tap + to create a custom account — give it a name, color, and icon. Perfect for travel funds, side projects, or anything you want to track separately.';
-  static const String tutOperations = 'Operations';
+  static const String tutOperations = 'Add';
   static const String tutOperationsBody =
-      'Record any deposit or withdrawal on any of your accounts.';
-  static const String tutTransfer = 'Transfer';
+      'Record deposits, withdrawals, or debt on any of your accounts.';
+  static const String tutTransfer = 'Move';
   static const String tutTransferBody =
       'Move funds between Wallet, Savings, and Budget instantly.';
   static const String tutNavigation = 'Navigation';

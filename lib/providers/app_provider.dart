@@ -75,6 +75,51 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     return true;
   }
 
+  /// Lends [amount] from [accountId] to a person.
+  /// Decreases available balance and increases loaned_amount.
+  /// Returns false if available balance is insufficient.
+  Future<bool> lendDebt(int accountId, double amount, TransactionModel tx) async {
+    final current = state.firstWhere((a) => a.id == accountId);
+    if (current.balance < amount) return false;
+    await _db.insertTransaction(tx);
+    await _db.updateBalance(accountId, current.balance - amount);
+    await _db.updateLoanedAmount(accountId, current.loanedAmount + amount);
+    state = [
+      for (final a in state)
+        if (a.id == accountId)
+          a.copyWith(
+            balance: current.balance - amount,
+            loanedAmount: current.loanedAmount + amount,
+          )
+        else
+          a,
+    ];
+    return true;
+  }
+
+  /// Records repayment of [amount] from an outstanding debt in [accountId].
+  /// Increases available balance and decreases loaned_amount.
+  /// Returns false if there is no outstanding debt.
+  Future<bool> repayDebt(int accountId, double amount, TransactionModel tx) async {
+    final current = state.firstWhere((a) => a.id == accountId);
+    if (current.loanedAmount <= 0) return false;
+    final actual = amount.clamp(0.0, current.loanedAmount);
+    await _db.insertTransaction(tx);
+    await _db.updateBalance(accountId, current.balance + actual);
+    await _db.updateLoanedAmount(accountId, current.loanedAmount - actual);
+    state = [
+      for (final a in state)
+        if (a.id == accountId)
+          a.copyWith(
+            balance: current.balance + actual,
+            loanedAmount: current.loanedAmount - actual,
+          )
+        else
+          a,
+    ];
+    return true;
+  }
+
   /// Returns false if the source account has insufficient funds.
   ///
   /// All DB writes (balances + transactions) complete before state is updated.

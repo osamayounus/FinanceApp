@@ -11,6 +11,7 @@ import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,8 +22,9 @@ class _Account {
   final int id;
   final String name;
   final IconData icon;
-  final double balance;
-  const _Account(this.id, this.name, this.icon, this.balance);
+  final double balance;       // available
+  final double loanedAmount;  // lent out
+  const _Account(this.id, this.name, this.icon, this.balance, this.loanedAmount);
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -66,25 +68,47 @@ class _OperationPageState extends ConsumerState<OperationPage> {
   Future<void> _confirm() async {
     final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
     final messenger = ScaffoldMessenger.of(context);
+    final currency = ref.read(currencyProvider);
 
     if (amount <= 0) {
       AppToast.error(messenger, AppStrings.enterValidAmount);
       return;
     }
 
+    // Debt repayment cannot exceed the outstanding loaned amount.
+    if (_operation == 'debt_repaid') {
+      final live = ref.read(accountsProvider)
+          .firstWhere((a) => a.id == _account!.id);
+      if (live.loanedAmount <= 0) {
+        AppToast.error(messenger, 'No outstanding debt on ${_account!.name}');
+        return;
+      }
+      if (amount > live.loanedAmount) {
+        AppToast.error(
+          messenger,
+          'Cannot exceed outstanding: ${fmtAmt(live.loanedAmount, currency)}',
+        );
+        return;
+      }
+    }
+
+    final defaultTitle = switch (_operation) {
+      'deposit'     => AppStrings.deposit,
+      'withdraw'    => AppStrings.withdraw,
+      'debt_out'    => 'Debt Given',
+      'debt_repaid' => 'Debt Received',
+      _             => AppStrings.deposit,
+    };
     final title = _titleCtrl.text.trim().isNotEmpty
         ? _titleCtrl.text.trim()
-        : (_operation == 'deposit' ? AppStrings.deposit : AppStrings.withdraw);
+        : defaultTitle;
     final note = _noteCtrl.text.trim();
-    final isDeposit = _operation == 'deposit';
-    final amountStr = amount % 1 == 0
-        ? amount.toInt().toString()
-        : amount.toStringAsFixed(2);
+    final amountStr = fmtAmt(amount, currency);
 
     final tx = TransactionModel(
       id: 0,
       accountId: _account!.id,
-      type: isDeposit ? 'deposit' : 'withdraw',
+      type: _operation!,
       amount: amount,
       title: title,
       note: note,
@@ -92,26 +116,37 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     );
 
     bool success;
-    if (isDeposit) {
-      await ref.read(accountsProvider.notifier).deposit(_account!.id, amount, tx);
-      success = true;
-    } else {
-      success = await ref.read(accountsProvider.notifier).withdraw(_account!.id, amount, tx);
+    switch (_operation) {
+      case 'deposit':
+        await ref.read(accountsProvider.notifier).deposit(_account!.id, amount, tx);
+        success = true;
+      case 'withdraw':
+        success = await ref.read(accountsProvider.notifier).withdraw(_account!.id, amount, tx);
+      case 'debt_out':
+        success = await ref.read(accountsProvider.notifier).lendDebt(_account!.id, amount, tx);
+      case 'debt_repaid':
+        success = await ref.read(accountsProvider.notifier).repayDebt(_account!.id, amount, tx);
+      default:
+        success = false;
     }
 
     if (!mounted) return;
     if (!success) {
-      AppToast.error(messenger, 'Insufficient balance in ${_account!.name}');
+      final msg = _operation == 'debt_out'
+          ? 'Insufficient balance in ${_account!.name}'
+          : 'No outstanding debt in ${_account!.name}';
+      AppToast.error(messenger, msg);
       return;
     }
 
-    final currency = ref.read(currencyProvider);
-    AppToast.success(
-      messenger,
-      isDeposit
-          ? '+ $amountStr $currency deposited to ${_account!.name}'
-          : '- $amountStr $currency withdrawn from ${_account!.name}',
-    );
+    final toastMsg = switch (_operation) {
+      'deposit'     => '+ $amountStr deposited to ${_account!.name}',
+      'withdraw'    => '- $amountStr withdrawn from ${_account!.name}',
+      'debt_out'    => '$amountStr lent from ${_account!.name}',
+      'debt_repaid' => '$amountStr received back into ${_account!.name}',
+      _             => 'Done',
+    };
+    AppToast.success(messenger, toastMsg);
     Navigator.pop(context);
   }
 
@@ -126,18 +161,21 @@ class _OperationPageState extends ConsumerState<OperationPage> {
         AccountType.wallet.displayName,
         Icons.account_balance_wallet_rounded,
         accounts.firstWhere((a) => a.id == kWalletId).balance,
+        accounts.firstWhere((a) => a.id == kWalletId).loanedAmount,
       ),
       _Account(
         kSavingsId,
         AccountType.savings.displayName,
         Icons.savings_rounded,
         accounts.firstWhere((a) => a.id == kSavingsId).balance,
+        accounts.firstWhere((a) => a.id == kSavingsId).loanedAmount,
       ),
       _Account(
         kBudgetId,
         AccountType.budget.displayName,
         Icons.receipt_long_rounded,
         accounts.firstWhere((a) => a.id == kBudgetId).balance,
+        accounts.firstWhere((a) => a.id == kBudgetId).loanedAmount,
       ),
       ...accounts.where((a) => a.isCustom).map((a) => _Account(
             a.id,
@@ -146,6 +184,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                 ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
                 : Icons.savings_rounded,
             a.balance,
+            a.loanedAmount,
           )),
     ];
 
@@ -195,6 +234,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                   onDateChanged: (d) => setState(() => _customDate = d),
                   onBack: _back,
                   onConfirm: _confirm,
+                  loanedAmount: _account!.loanedAmount,
                 ),
             },
           ),
@@ -304,18 +344,56 @@ class _StepOperation extends StatelessWidget {
             ),
           ),
           SizedBox(height: AppSizes.xl),
-          _OperationButton(
-            label: AppStrings.deposit,
-            bg: AppColors.myGreen,
-            textColor: AppColors.primary,
-            onTap: () => onSelect('deposit'),
+          // ── Main operations ───────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _OperationButton(
+                  label: AppStrings.deposit,
+                  bg: AppColors.myGreen,
+                  textColor: AppColors.primary,
+                  onTap: () => onSelect('deposit'),
+                ),
+              ),
+              SizedBox(width: AppSizes.s),
+              Expanded(
+                child: _OperationButton(
+                  label: AppStrings.withdraw,
+                  bg: AppColors.myRed.withValues(alpha: 0.15),
+                  textColor: AppColors.myRed,
+                  onTap: () => onSelect('withdraw'),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: AppSizes.m),
-          _OperationButton(
-            label: AppStrings.withdraw,
-            bg: AppColors.myRed.withValues(alpha: 0.15),
-            textColor: AppColors.myRed,
-            onTap: () => onSelect('withdraw'),
+          SizedBox(height: AppSizes.s),
+          // ── Debt operations ───────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: _OperationButton(
+                  label: 'Give Debt',
+                  bg: const Color(0xFFFFB300).withValues(alpha: 0.15),
+                  textColor: const Color(0xFFFF8F00),
+                  onTap: () => onSelect('debt_out'),
+                ),
+              ),
+              SizedBox(width: AppSizes.s),
+              Expanded(
+                child: _OperationButton(
+                  label: 'Receive Back',
+                  bg: account.loanedAmount > 0
+                      ? Colors.teal.withValues(alpha: 0.15)
+                      : Colors.grey.withValues(alpha: 0.08),
+                  textColor: account.loanedAmount > 0
+                      ? Colors.teal
+                      : Colors.grey[400]!,
+                  onTap: account.loanedAmount > 0
+                      ? () => onSelect('debt_repaid')
+                      : () {},
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -336,6 +414,7 @@ class _StepAmount extends StatelessWidget {
   final ValueChanged<DateTime?> onDateChanged;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
+  final double loanedAmount;
 
   const _StepAmount({
     required this.account,
@@ -348,13 +427,26 @@ class _StepAmount extends StatelessWidget {
     required this.onDateChanged,
     required this.onBack,
     required this.onConfirm,
+    required this.loanedAmount,
   });
 
-  bool get _isDeposit => operation == 'deposit';
-  Color get _accentColor => _isDeposit ? AppColors.myGreen : AppColors.myRed;
-  Color get _fieldBg => _isDeposit
-      ? AppColors.myGreen.withValues(alpha: 0.12)
-      : AppColors.myRed.withValues(alpha: 0.10);
+  bool get _isDeposit   => operation == 'deposit';
+  bool get _isDebtOut   => operation == 'debt_out';
+  bool get _isDebtBack  => operation == 'debt_repaid';
+
+  Color get _accentColor {
+    if (_isDeposit) return AppColors.myGreen;
+    if (_isDebtOut) return const Color(0xFFFF8F00);
+    if (_isDebtBack) return Colors.teal;
+    return AppColors.myRed;
+  }
+
+  Color get _fieldBg => _accentColor.withValues(alpha: _isDeposit ? 0.12 : 0.10);
+
+  Color get _amtTextColor {
+    if (_isDeposit) return AppColors.primary;
+    return _accentColor;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -377,8 +469,12 @@ class _StepAmount extends StatelessWidget {
           ),
           SizedBox(height: AppSizes.s),
           Text(
-            'Enter the amount you want to '
-            '${_isDeposit ? 'deposit into' : 'withdraw from'} ${account.name}:',
+            () {
+              if (_isDeposit) return 'Deposit into ${account.name}:';
+              if (_isDebtOut) return 'Lend from ${account.name}:';
+              if (_isDebtBack) return 'Receive back into ${account.name}:';
+              return 'Withdraw from ${account.name}:';
+            }(),
             style: TextStyle(
               fontFamily: 'Rubik',
               fontSize: AppSizes.fontS,
@@ -405,7 +501,7 @@ class _StepAmount extends StatelessWidget {
                 fontFamily: 'Rubik',
                 fontSize: AppSizes.fontL,
                 fontWeight: FontWeight.bold,
-                color: _isDeposit ? AppColors.primary : AppColors.myRed,
+                color: _amtTextColor,
               ),
               decoration: InputDecoration(
                 hintText: '0',
@@ -428,13 +524,35 @@ class _StepAmount extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(height: AppSizes.s),
+          // Available / Outstanding hint
+          if (!_isDeposit)
+            Padding(
+              padding: EdgeInsets.only(left: AppSizes.xs),
+              child: Text(
+                _isDebtBack
+                    ? 'Outstanding: ${fmtAmt(loanedAmount, currency)}'
+                    : 'Available: ${fmtAmt(account.balance, currency)}',
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: AppSizes.fontXS,
+                  color: Colors.grey[400],
+                ),
+              ),
+            ),
           SizedBox(height: AppSizes.m),
 
           // Title field
           _DetailField(
             controller: titleCtrl,
             label: AppStrings.titleOptional,
-            hint: _isDeposit ? 'e.g. Freelance payment' : 'e.g. Grocery shopping',
+            hint: _isDeposit
+                ? 'e.g. Freelance payment'
+                : _isDebtOut
+                    ? 'e.g. Lent to Ali'
+                    : _isDebtBack
+                        ? 'e.g. Ali paid back'
+                        : 'e.g. Grocery shopping',
             icon: Icons.label_outline_rounded,
           ),
           SizedBox(height: AppSizes.s + 4),

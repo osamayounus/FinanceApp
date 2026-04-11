@@ -197,6 +197,22 @@ class _TxStyle {
           amountColor: Colors.blueAccent,
           sign: '',
         );
+      case 'debt out':
+        return _TxStyle(
+          icon: Icons.handshake_outlined,
+          iconColor: const Color(0xFFFF8F00),
+          iconBg: const Color(0xFFFF8F00).withValues(alpha: 0.1),
+          amountColor: const Color(0xFFFF8F00),
+          sign: '- ',
+        );
+      case 'debt back':
+        return _TxStyle(
+          icon: Icons.handshake_outlined,
+          iconColor: Colors.teal,
+          iconBg: Colors.teal.withValues(alpha: 0.1),
+          amountColor: Colors.teal,
+          sign: '+ ',
+        );
       default:
         return _TxStyle(
           icon: Icons.help_outline,

@@ -9,6 +9,226 @@ import 'package:flutter/material.dart';
 
 export 'transaction_card.dart';
 
+// ── Card balance section ──────────────────────────────────────────────────────
+
+/// Renders the balance area of an account card.
+/// Single mode (no debt): shows [label] + big [available] number.
+/// Dual mode (loanedAmount > 0): shows a debt badge + AVAILABLE / TOTAL side by side.
+class CardBalanceSection extends StatelessWidget {
+  final double available;
+  final double loanedAmount;
+  final String currency;
+  /// e.g. 'BALANCE' or 'REMAINING'
+  final String label;
+  /// Color for large balance numbers.
+  final Color mainColor;
+  /// Color for labels and currency suffix (usually mainColor with reduced alpha).
+  final Color subColor;
+
+  const CardBalanceSection({
+    super.key,
+    required this.available,
+    required this.loanedAmount,
+    required this.currency,
+    required this.label,
+    required this.mainColor,
+    required this.subColor,
+  });
+
+  bool get _hasDebt => loanedAmount > 0;
+  double get _total => available + loanedAmount;
+
+  String _fmt(double v) =>
+      v % 1 == 0 ? '${v.toInt()}' : v.toStringAsFixed(2);
+
+  static const _debtAmber = Color(0xFFFFB300);
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_hasDebt) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: AppSizes.fontXS,
+              color: subColor,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                _fmt(available),
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: AppSizes.cardBalanceSize,
+                  fontWeight: FontWeight.w900,
+                  color: mainColor,
+                ),
+              ),
+              SizedBox(width: AppSizes.s),
+              Text(
+                currency,
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: AppSizes.fontM,
+                  fontWeight: FontWeight.w500,
+                  color: subColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // ── Dual mode ─────────────────────────────────────────────────────────────
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Debt badge
+        Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.s, vertical: AppSizes.xs - 1),
+          decoration: BoxDecoration(
+            color: _debtAmber.withValues(alpha: 0.18),
+            borderRadius: BorderRadius.circular(AppSizes.radiusS),
+            border:
+                Border.all(color: _debtAmber.withValues(alpha: 0.45), width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.handshake_outlined,
+                  color: _debtAmber, size: 11),
+              const SizedBox(width: 4),
+              Text(
+                '${_fmt(loanedAmount)} $currency lent',
+                style: const TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: _debtAmber,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: AppSizes.xs),
+
+        // Available + divider + Total
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Available (main, large)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AVAILABLE',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 10,
+                    color: subColor,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      _fmt(available),
+                      style: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: AppSizes.cardBalanceSize,
+                        fontWeight: FontWeight.w900,
+                        color: mainColor,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      currency,
+                      style: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: AppSizes.fontXS,
+                        fontWeight: FontWeight.w500,
+                        color: subColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            SizedBox(width: AppSizes.m),
+            // Vertical divider
+            Container(
+              height: 36,
+              width: 1,
+              margin: EdgeInsets.only(bottom: AppSizes.xs),
+              color: subColor.withValues(alpha: 0.25),
+            ),
+            SizedBox(width: AppSizes.m),
+
+            // Total (secondary, smaller, bottom-aligned)
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSizes.xs),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: 10,
+                      color: subColor,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        _fmt(_total),
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: AppSizes.fontL,
+                          fontWeight: FontWeight.w700,
+                          color: subColor,
+                        ),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        currency,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: subColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 // ── Modal handle bar ──────────────────────────────────────────────────────────
 
 class ModalHandle extends StatelessWidget {

@@ -51,7 +51,10 @@ extension AccountTypeExt on AccountType {
 class AccountModel {
   final int id;
   final AccountType type;
+  /// Available balance — the amount the user can actually spend.
   final double balance;
+  /// Amount currently lent out (debt given). Not spendable until repaid.
+  final double loanedAmount;
   final String? customName;
   final int? colorIndex;
   final int? iconCode;
@@ -60,10 +63,14 @@ class AccountModel {
     required this.id,
     required this.type,
     required this.balance,
+    this.loanedAmount = 0.0,
     this.customName,
     this.colorIndex,
     this.iconCode,
   });
+
+  /// Total net worth = available + lent out.
+  double get totalBalance => balance + loanedAmount;
 
   bool get isCustom => type == AccountType.custom;
 
@@ -72,6 +79,7 @@ class AccountModel {
 
   AccountModel copyWith({
     double? balance,
+    double? loanedAmount,
     String? customName,
     int? colorIndex,
     int? iconCode,
@@ -80,6 +88,7 @@ class AccountModel {
       id: id,
       type: type,
       balance: balance ?? this.balance,
+      loanedAmount: loanedAmount ?? this.loanedAmount,
       customName: customName ?? this.customName,
       colorIndex: colorIndex ?? this.colorIndex,
       iconCode: iconCode ?? this.iconCode,
@@ -90,6 +99,7 @@ class AccountModel {
         'id': id,
         'type': type.key,
         'balance': balance,
+        'loaned_amount': loanedAmount,
         'custom_name': customName,
         'color_index': colorIndex,
         'icon_code': iconCode,
@@ -99,6 +109,7 @@ class AccountModel {
         id: map['id'] as int,
         type: AccountTypeExt.fromKey(map['type'] as String),
         balance: (map['balance'] as num).toDouble(),
+        loanedAmount: (map['loaned_amount'] as num?)?.toDouble() ?? 0.0,
         customName: map['custom_name'] as String?,
         colorIndex: map['color_index'] as int?,
         iconCode: map['icon_code'] as int?,

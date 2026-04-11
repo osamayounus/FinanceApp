@@ -19,10 +19,11 @@ class IncomeCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = ref.watch(currencyProvider);
-    final balance = ref
+    final account = ref
         .watch(accountsProvider)
-        .firstWhere((a) => a.id == kWalletId)
-        .balance;
+        .firstWhere((a) => a.id == kWalletId);
+    final balance = account.balance;
+    final loaned = account.loanedAmount;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXXL),
@@ -97,44 +98,14 @@ class IncomeCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // ── Balance label + amount + currency ─────────────────
-                  Text(
-                    AppStrings.balance,
-                    style: TextStyle(
-                      fontFamily: 'Rubik',
-                      fontSize: AppSizes.fontXS,
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        balance % 1 == 0
-                            ? '${balance.toInt()}'
-                            : balance.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.cardBalanceSize,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      SizedBox(width: AppSizes.s),
-                      Text(
-                        currency,
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontM,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.primary.withValues(alpha: 0.45),
-                        ),
-                      ),
-                    ],
+                  // ── Balance section (single or dual when debt exists) ──
+                  CardBalanceSection(
+                    available: balance,
+                    loanedAmount: loaned,
+                    currency: currency,
+                    label: AppStrings.balance,
+                    mainColor: AppColors.primary,
+                    subColor: AppColors.primary.withValues(alpha: 0.45),
                   ),
 
                   const Spacer(),

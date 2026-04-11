@@ -158,19 +158,25 @@ class _HistorypageState extends ConsumerState<Historypage> {
     final note = _userNote(tx);
     final currency = ref.read(currencyProvider);
 
-    final isDeposit = displayType == 'Deposit';
-    final isWithdraw = displayType == 'Withdraw';
-    final iconData = isDeposit
-        ? Icons.arrow_downward_rounded
-        : isWithdraw
-            ? Icons.arrow_upward_rounded
-            : Icons.swap_horiz_rounded;
-    final accentColor = isDeposit
-        ? AppColors.myGreen
-        : isWithdraw
-            ? AppColors.myRed
-            : Colors.blueAccent;
-    final sign = isDeposit ? '+ ' : isWithdraw ? '- ' : '';
+    final iconData = switch (displayType) {
+      'Deposit'   => Icons.arrow_downward_rounded,
+      'Withdraw'  => Icons.arrow_upward_rounded,
+      'Debt Out'  => Icons.handshake_outlined,
+      'Debt Back' => Icons.handshake_outlined,
+      _           => Icons.swap_horiz_rounded,
+    };
+    final accentColor = switch (displayType) {
+      'Deposit'   => AppColors.myGreen,
+      'Withdraw'  => AppColors.myRed,
+      'Debt Out'  => const Color(0xFFFF8F00),
+      'Debt Back' => Colors.teal,
+      _           => Colors.blueAccent,
+    };
+    final sign = switch (displayType) {
+      'Deposit' || 'Debt Back' => '+ ',
+      'Withdraw' || 'Debt Out' => '- ',
+      _                        => '',
+    };
 
     showModalBottomSheet(
       context: context,
@@ -405,6 +411,10 @@ class _HistorypageState extends ConsumerState<Historypage> {
       case 'transfer_in':
       case 'transfer_out':
         return 'Transfer';
+      case 'debt_out':
+        return 'Debt Out';
+      case 'debt_repaid':
+        return 'Debt Back';
       default:
         return 'Deposit';
     }

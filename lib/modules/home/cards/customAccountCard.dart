@@ -138,43 +138,14 @@ class CustomAccountCard extends ConsumerWidget {
 
                   const Spacer(),
 
-                  // ── Balance ───────────────────────────────────────
-                  Text(
-                    AppStrings.balance,
-                    style: TextStyle(
-                      fontFamily: 'Rubik',
-                      fontSize: AppSizes.fontXS,
-                      color: Colors.white.withValues(alpha: 0.6),
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        account.balance % 1 == 0
-                            ? '${account.balance.toInt()}'
-                            : account.balance.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.cardBalanceSize,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: AppSizes.s),
-                      Text(
-                        currency,
-                        style: TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontM,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
+                  // ── Balance section (single or dual when debt exists) ──
+                  CardBalanceSection(
+                    available: account.balance,
+                    loanedAmount: account.loanedAmount,
+                    currency: currency,
+                    label: AppStrings.balance,
+                    mainColor: Colors.white,
+                    subColor: Colors.white.withValues(alpha: 0.65),
                   ),
 
                   const Spacer(),
