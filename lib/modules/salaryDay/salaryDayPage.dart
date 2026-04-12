@@ -4,8 +4,9 @@
 // triggers the atomic DB transaction: credits salary to Wallet, resets the
 // Monthly Budget, and rolls over any Savings contributions.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
-import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/overlays/salary_day_overlay.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
@@ -32,6 +33,14 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
   late final Animation<double> _ring1Opacity;
   late final Animation<double> _ring2Scale;
   late final Animation<double> _ring2Opacity;
+
+  // Salary received overlay data
+  bool _showSalary = false;
+  double _salaryAmount = 0;
+  double _netIncome = 0;
+  double _budgetLeftover = 0;
+  double _monthlyBudget = 0;
+  String _salaryCurrency = '';
 
   final _coinKey = GlobalKey();
   OverlayEntry? _tutorialEntry;
@@ -228,17 +237,24 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
   Future<void> _processSalaryDay() async {
     final user = ref.read(userProvider);
     final currency = ref.read(currencyProvider);
-    final messenger = ScaffoldMessenger.of(context);
+    final accounts = ref.read(accountsProvider);
+    final budgetBefore =
+        accounts.firstWhere((a) => a.id == kBudgetId).balance;
+
     await ref
         .read(accountsProvider.notifier)
         .processSalaryDay(user.salary, user.monthlyBudget);
     ref.read(expensesProvider.notifier).resetAll();
 
     if (!mounted) return;
-    AppToast.success(
-      messenger,
-      'Salary day done! + ${user.salary.toInt()} $currency received 🎉',
-    );
+    setState(() {
+      _showSalary = true;
+      _salaryAmount = user.salary;
+      _salaryCurrency = currency;
+      _netIncome = user.salary - user.monthlyBudget;
+      _budgetLeftover = budgetBefore;
+      _monthlyBudget = user.monthlyBudget;
+    });
   }
 
   @override
@@ -256,8 +272,10 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
     final double screenWidth = MediaQuery.of(context).size.width;
     final double coinSize = screenWidth * 0.62;
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -440,6 +458,24 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
           ),
         ),
       ),
+        ),
+
+        // ── Salary received overlay ───────────────────────────────────
+        if (_showSalary)
+          SalaryDayOverlay(
+            salary: _salaryAmount,
+            netIncome: _netIncome,
+            budgetLeftover: _budgetLeftover,
+            monthlyBudget: _monthlyBudget,
+            currency: _salaryCurrency,
+            onComplete: () {
+              if (mounted) {
+                ref.read(navIndexProvider.notifier).state = 1;
+                setState(() => _showSalary = false);
+              }
+            },
+          ),
+      ],
     );
   }
 }

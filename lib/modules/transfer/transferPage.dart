@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
-import 'package:financeapp/modules/transfer/transfer_success_page.dart';
+import 'package:financeapp/shared/overlays/transfer_success_overlay.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';

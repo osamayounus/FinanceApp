@@ -4,6 +4,7 @@
 // resetting all app data back to the onboarding state.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
+import 'package:financeapp/shared/overlays/profile_deleted_overlay.dart';
 import 'package:financeapp/modules/profile/profile_picker_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
@@ -23,8 +24,10 @@ class Profilepage extends ConsumerStatefulWidget {
 }
 
 class _ProfilepageState extends ConsumerState<Profilepage> {
-  // True while the DB wipe is in-flight; prevents double-tap.
   bool _resetting = false;
+  bool _showDeleted = false;
+  String _deletedInitial = '?';
+  VoidCallback? _onDeleteComplete;
 
   Future<void> _confirmReset() async {
     final confirmed = await showDialog<bool>(
@@ -89,6 +92,9 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     final pm = ProfileManager.instance;
     final activeId = await pm.getActiveProfileId();
 
+    // Capture profile initial before wiping.
+    final userName = ref.read(userProvider)?.name ?? '';
+
     // Wipe current profile's data.
     final db = ref.read(dbProvider);
     await db.resetDatabase();
@@ -98,13 +104,19 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     if (activeId != null) await pm.deleteProfile(activeId);
     await pm.clearActiveProfile();
 
-    // Remaining profiles → show picker; none left → onboarding.
     final remaining = await pm.getProfiles();
-    appConfigNotifier.value = AppConfig(
+    final config = AppConfig(
       isSetup: false,
       showPicker: remaining.isNotEmpty,
       allProfiles: remaining,
     );
+
+    if (!mounted) return;
+    setState(() {
+      _showDeleted = true;
+      _deletedInitial = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+      _onDeleteComplete = () => appConfigNotifier.value = config;
+    });
   }
 
   void _switchProfile() {
@@ -121,8 +133,10 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     final user = ref.watch(userProvider);
     final currency = ref.watch(currencyProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.pageBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(
@@ -471,6 +485,15 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
           ),
         ),
       ),
+        ),
+
+        // ── Deletion overlay ─────────────────────────────────────────
+        if (_showDeleted)
+          ProfileDeletedOverlay(
+            initial: _deletedInitial,
+            onComplete: _onDeleteComplete ?? () {},
+          ),
+      ],
     );
   }
 
@@ -705,3 +728,4 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+

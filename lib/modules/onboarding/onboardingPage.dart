@@ -5,6 +5,7 @@
 // SQLite and updates appConfigNotifier to mount the main app shell.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/main.dart';
+import 'package:financeapp/shared/overlays/welcome_overlay.dart';
 import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
@@ -37,6 +38,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _budgetCtrl = TextEditingController();
   final _savingsCtrl = TextEditingController();
   final _currencySearchCtrl = TextEditingController();
+
+  bool _showSuccess = false;
+  String _userName = '';
+  AppConfig? _pendingConfig;
 
   @override
   void dispose() {
@@ -79,23 +84,30 @@ class _OnboardingPageState extends State<OnboardingPage> {
     final bills = await db.getBills();
     final allProfiles = await pm.getProfiles();
 
-    // Update global config — AppRoot rebuilds ProviderScope with real data.
-    appConfigNotifier.value = AppConfig(
-      isSetup: true,
-      isFirstRun: widget.isFirstProfile,
-      allProfiles: allProfiles,
-      activeProfileId: profile.id,
-      db: db,
-      user: user,
-      accounts: accounts,
-      bills: bills,
-    );
+    if (!mounted) return;
+    setState(() {
+      _showSuccess = true;
+      _userName = name;
+      _loading = false;
+      _pendingConfig = AppConfig(
+        isSetup: true,
+        isFirstRun: widget.isFirstProfile,
+        allProfiles: allProfiles,
+        activeProfileId: profile.id,
+        db: db,
+        user: user,
+        accounts: accounts,
+        bills: bills,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.primary,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -246,6 +258,19 @@ class _OnboardingPageState extends State<OnboardingPage> {
           ),
         ),
       ),
+        ),
+
+        // ── Celebration overlay ──────────────────────────────────────
+        if (_showSuccess)
+          WelcomeOverlay(
+            name: _userName,
+            onComplete: () {
+              if (_pendingConfig != null) {
+                appConfigNotifier.value = _pendingConfig!;
+              }
+            },
+          ),
+      ],
     );
   }
 
@@ -575,3 +600,4 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 }
+

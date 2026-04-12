@@ -15,6 +15,7 @@ import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/modules/onboarding/onboardingPage.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
+import 'package:financeapp/shared/overlays/profile_switch_overlay.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/utils/currency.dart';
@@ -50,6 +51,10 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
   int? _activeProfileId;
   bool _loading = true;
   int? _switching;
+  bool _showSwitchOverlay = false;
+  String _switchingName = '';
+  String _switchingInitial = '?';
+  VoidCallback? _onSwitchComplete;
 
   @override
   void initState() {
@@ -91,7 +96,14 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
   }
 
   Future<void> _switchTo(_ProfileSnapshot snap) async {
-    setState(() => _switching = snap.profile.id);
+    setState(() {
+      _switching = snap.profile.id;
+      _switchingName = snap.profile.name;
+      _switchingInitial = snap.profile.name.isNotEmpty
+          ? snap.profile.name[0].toUpperCase()
+          : '?';
+    });
+
     final pm = ProfileManager.instance;
     await pm.setActiveProfileId(snap.profile.id);
 
@@ -101,7 +113,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     final bills = await db.getBills();
     final allProfiles = await pm.getProfiles();
 
-    appConfigNotifier.value = AppConfig(
+    final config = AppConfig(
       isSetup: user != null,
       allProfiles: allProfiles,
       activeProfileId: snap.profile.id,
@@ -111,7 +123,14 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
       bills: bills,
     );
 
-    if (mounted && widget.canPop) Navigator.pop(context);
+    if (!mounted) return;
+    setState(() {
+      _showSwitchOverlay = true;
+      _onSwitchComplete = () {
+        appConfigNotifier.value = config;
+        if (mounted && widget.canPop) Navigator.pop(context);
+      };
+    });
   }
 
   void _addNew() {
@@ -125,89 +144,102 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.pageBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ────────────────────────────────────────────────
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  AppSizes.m, AppSizes.m, AppSizes.m, 0),
-              child: Row(
-                children: [
-                  if (widget.canPop)
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.primary,
-                        size: AppSizes.iconM,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.pageBackground,
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Header ────────────────────────────────────────────────
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      AppSizes.m, AppSizes.m, AppSizes.m, 0),
+                  child: Row(
+                    children: [
+                      if (widget.canPop)
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: AppColors.primary,
+                            size: AppSizes.iconM,
+                          ),
+                        )
+                      else
+                        SizedBox(width: AppSizes.m),
+                      Expanded(
+                        child: Text(
+                          'Switch Profile',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: AppSizes.fontXXL,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
-                    )
-                  else
-                    SizedBox(width: AppSizes.m),
-                  Expanded(
-                    child: Text(
-                      'Switch Profile',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Rubik',
-                        fontSize: AppSizes.fontXXL,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
+                      SizedBox(width: widget.canPop ? 0 : AppSizes.m + 24),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      AppSizes.l, AppSizes.s, AppSizes.l, AppSizes.l),
+                  child: Text(
+                    'Choose a profile to continue',
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontS,
+                      color: Colors.grey[400],
                     ),
                   ),
-                  SizedBox(width: widget.canPop ? 0 : AppSizes.m + 24),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                  AppSizes.l, AppSizes.s, AppSizes.l, AppSizes.l),
-              child: Text(
-                'Choose a profile to continue',
-                style: TextStyle(
-                  fontFamily: 'Rubik',
-                  fontSize: AppSizes.fontS,
-                  color: Colors.grey[400],
                 ),
-              ),
-            ),
 
-            // ── Profile list ──────────────────────────────────────────
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary))
-                  : ListView(
-                      padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
-                      children: [
-                        ..._snapshots.map((snap) {
-                          final isActive = snap.profile.id == _activeProfileId;
-                          return _ProfileTile(
-                            snapshot: snap,
-                            isActive: isActive,
-                            isLoading: _switching == snap.profile.id,
-                            onTap: (isActive || _switching != null)
-                                ? null
-                                : () => _switchTo(snap),
-                          );
-                        }),
-                        if (_snapshots.length < kMaxProfiles)
-                          _AddProfileTile(
-                            onTap: _switching != null ? null : _addNew,
-                          ),
-                      ],
-                    ),
+                // ── Profile list ──────────────────────────────────────────
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary))
+                      : ListView(
+                          padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
+                          children: [
+                            ..._snapshots.map((snap) {
+                              final isActive =
+                                  snap.profile.id == _activeProfileId;
+                              return _ProfileTile(
+                                snapshot: snap,
+                                isActive: isActive,
+                                isLoading: _switching == snap.profile.id,
+                                onTap: (isActive || _switching != null)
+                                    ? null
+                                    : () => _switchTo(snap),
+                              );
+                            }),
+                            if (_snapshots.length < kMaxProfiles)
+                              _AddProfileTile(
+                                onTap: _switching != null ? null : _addNew,
+                              ),
+                          ],
+                        ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+
+        // ── Switch overlay ─────────────────────────────────────────────
+        if (_showSwitchOverlay)
+          ProfileSwitchOverlay(
+            name: _switchingName,
+            initial: _switchingInitial,
+            onComplete: _onSwitchComplete ?? () {},
+          ),
+      ],
     );
   }
 }
