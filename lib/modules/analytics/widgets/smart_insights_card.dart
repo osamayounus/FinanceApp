@@ -89,7 +89,9 @@ class SmartInsightsCard extends StatelessWidget {
             '$pct% of your monthly budget has been used',
           ),
         );
-      } else if (pct <= 30 && curr.expenses > 0) {
+      } else if (pct > 0 && pct <= 30 && curr.expenses > 0) {
+        // pct == 0 means nothing came out of the budget (e.g. bills are paid
+        // from the wallet), which says nothing about being on track.
         out.add(
           _Insight(
             Icons.check_circle_outline_rounded,
@@ -101,29 +103,25 @@ class SmartInsightsCard extends StatelessWidget {
     }
 
     // ── Rule 3: Savings activity this month ───────────────────────────────
-    if (data.savingsHistory.length >= 2) {
-      final delta =
-          data.savingsHistory.last -
-          data.savingsHistory[data.savingsHistory.length - 2];
-      if (delta.abs() > 0) {
-        final amt = fmtNum(delta.abs(), currency);
-        if (delta > 0) {
-          out.add(
-            _Insight(
-              Icons.savings_rounded,
-              AppColors.myGreen,
-              'You added $amt $currency to savings this month',
-            ),
-          );
-        } else {
-          out.add(
-            _Insight(
-              Icons.savings_rounded,
-              AppColors.myRed,
-              'You withdrew $amt $currency from savings this month',
-            ),
-          );
-        }
+    final delta = data.savingsChangeThisMonth;
+    if (delta.abs() > 0) {
+      final amt = fmtNum(delta.abs(), currency);
+      if (delta > 0) {
+        out.add(
+          _Insight(
+            Icons.savings_rounded,
+            AppColors.myGreen,
+            'You added $amt $currency to savings this month',
+          ),
+        );
+      } else {
+        out.add(
+          _Insight(
+            Icons.savings_rounded,
+            AppColors.myRed,
+            'You withdrew $amt $currency from savings this month',
+          ),
+        );
       }
     }
 
@@ -154,8 +152,10 @@ class SmartInsightsCard extends StatelessWidget {
     }
 
     // ── Rule 5: Best / worst month in the 6-month window ─────────────────
-    if (curr.expenses > 0 && out.length < 4) {
-      final exps = months.map((m) => m.expenses).toList();
+    // Months without any spending are "no data", not "cheapest month", so they
+    // are left out; fewer than 3 months of data is too little to rank anything.
+    final exps = months.map((m) => m.expenses).where((e) => e > 0).toList();
+    if (curr.expenses > 0 && exps.length >= 3 && out.length < 4) {
       final minExp = exps.reduce((a, b) => a < b ? a : b);
       final maxExp = exps.reduce((a, b) => a > b ? a : b);
       // Only fire when this month is uniquely best/worst (avoids ties).

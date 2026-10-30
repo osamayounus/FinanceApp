@@ -42,10 +42,15 @@ class AnalyticsData {
   /// this month. When non-empty, the last value equals [savingsHistory.last].
   final List<double> currentMonthTimeline;
 
+  /// Net savings movement the user made this month (deposits, withdrawals,
+  /// transfers, debts), excluding the starting balance entered at onboarding.
+  final double savingsChangeThisMonth;
+
   const AnalyticsData({
     required this.months,
     required this.savingsHistory,
     required this.currentMonthTimeline,
+    this.savingsChangeThisMonth = 0,
   });
 
   /// Convenience accessor for the current (latest) month stats.

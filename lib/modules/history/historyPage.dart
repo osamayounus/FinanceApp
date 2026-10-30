@@ -4,13 +4,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/history/history_filter.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class Historypage extends ConsumerStatefulWidget {
@@ -33,10 +36,23 @@ class _HistorypageState extends ConsumerState<Historypage> {
   // True while the initial DB fetch is in-flight; shows a spinner.
   bool _loading = true;
 
+  final _searchCtrl = TextEditingController();
+  HistoryKind _kind = HistoryKind.all;
+  DateTimeRange? _range;
+
+  HistoryFilter get _filter =>
+      HistoryFilter(query: _searchCtrl.text, kind: _kind, range: _range);
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -50,12 +66,13 @@ class _HistorypageState extends ConsumerState<Historypage> {
     }
   }
 
-  /// Groups transactions by "Month Year" preserving order (desc).
-  List<_Item> get _items {
+  /// Groups the transactions that pass the filter by "Month Year" preserving
+  /// order (desc).
+  List<_Item> _itemsOf(List<TransactionModel> visible) {
     final result = <_Item>[];
     String? lastMonth;
 
-    for (final tx in _transactions) {
+    for (final tx in visible) {
       final month = _monthLabel(tx.createdAt);
       if (month != lastMonth) {
         result.add(_Item.header(month));
@@ -72,6 +89,8 @@ class _HistorypageState extends ConsumerState<Historypage> {
 
   @override
   Widget build(BuildContext context) {
+    final filter = _filter;
+    final items = _itemsOf(filter.apply(_transactions));
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
       body: SafeArea(
@@ -110,6 +129,9 @@ class _HistorypageState extends ConsumerState<Historypage> {
               ),
             ),
 
+            // ── Search + filters (only worth showing once there is history) ──
+            if (!_loading && _transactions.isNotEmpty) _filterBar(filter),
+
             // ── Content ─────────────────────────────────────────────
             Expanded(
               child: _loading
@@ -118,14 +140,16 @@ class _HistorypageState extends ConsumerState<Historypage> {
                           color: AppColors.primary))
                   : _transactions.isEmpty
                       ? _emptyState()
-                      : ListView.builder(
+                      : items.isEmpty
+                          ? _noMatchesState()
+                          : ListView.builder(
                           padding: EdgeInsets.symmetric(
                             horizontal: AppSizes.m,
                             vertical: AppSizes.s,
                           ),
-                          itemCount: _items.length,
+                          itemCount: items.length,
                           itemBuilder: (context, index) {
-                            final item = _items[index];
+                            final item = items[index];
                             if (item.isHeader) {
                               return _MonthHeader(label: item.month!);
                             }
@@ -133,13 +157,13 @@ class _HistorypageState extends ConsumerState<Historypage> {
                             return GestureDetector(
                               onTap: () => _showTxDetail(tx),
                               child: TransactionCard(
-                                type: _txDisplayType(tx.type),
+                                type: txDisplayType(tx.type),
                                 amount: tx.amount,
                                 description: tx.title.isNotEmpty
                                     ? tx.title
-                                    : _txDisplayType(tx.type),
+                                    : txDisplayType(tx.type),
                                 subtitle: _txSubtitle(tx),
-                                note: _userNote(tx),
+                                note: txUserNote(tx),
                                 dateTime: tx.createdAt,
                               ),
                             );
@@ -153,9 +177,9 @@ class _HistorypageState extends ConsumerState<Historypage> {
   }
 
   void _showTxDetail(TransactionModel tx) {
-    final displayType = _txDisplayType(tx.type);
+    final displayType = txDisplayType(tx.type);
     final subtitle = _txSubtitle(tx);
-    final note = _userNote(tx);
+    final note = txUserNote(tx);
     final currency = ref.read(currencyProvider);
 
     final iconData = switch (displayType) {
@@ -270,6 +294,68 @@ class _HistorypageState extends ConsumerState<Historypage> {
               _detailRow(Icons.notes_rounded, 'Note', note),
 
             SizedBox(height: AppSizes.m),
+
+            // Edit / delete: only for rows that can be corrected on their own.
+            if (AppDatabase.editableTxTypes.contains(tx.type)) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _deleteTx(tx);
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded,
+                          color: AppColors.myRed),
+                      label: const Text(
+                        AppStrings.delete,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.myRed,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: AppColors.myRed.withValues(alpha: 0.4)),
+                        minimumSize: Size.fromHeight(AppSizes.buttonHeight),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusXL)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppSizes.s),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _editTx(tx);
+                      },
+                      icon: const Icon(Icons.edit_outlined,
+                          color: AppColors.primary),
+                      label: const Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                            color: AppColors.primary.withValues(alpha: 0.4)),
+                        minimumSize: Size.fromHeight(AppSizes.buttonHeight),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusXL)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: AppSizes.s),
+            ],
 
             // Close button
             SizedBox(
@@ -398,39 +484,239 @@ class _HistorypageState extends ConsumerState<Historypage> {
     );
   }
 
-  /// Maps DB transaction type → display type for TransactionCard styling.
-  String _txDisplayType(String type) {
-    switch (type) {
-      case 'deposit':
-      case 'salary':
-      case 'initial':
-        return 'Deposit';
-      case 'withdraw':
-      case 'bill_paid':
-        return 'Withdraw';
-      case 'transfer_in':
-      case 'transfer_out':
-        return 'Transfer';
-      case 'debt_out':
-        return 'Debt Out';
-      case 'debt_repaid':
-        return 'Debt Back';
-      default:
-        return 'Deposit';
-    }
+  // ── Search + filters ──────────────────────────────────────────────────────
+
+  Widget _filterBar(HistoryFilter filter) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSizes.m),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppSizes.radiusL),
+            ),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (_) => setState(() {}),
+              style: TextStyle(
+                fontFamily: 'Rubik',
+                fontSize: AppSizes.fontM,
+                color: AppColors.primary,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search title, note or amount',
+                hintStyle:
+                    TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+                prefixIcon: Icon(Icons.search_rounded,
+                    color: Colors.grey[400], size: AppSizes.iconM),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchCtrl.text.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Clear search',
+                        onPressed: () => setState(_searchCtrl.clear),
+                        icon: Icon(Icons.close_rounded,
+                            color: Colors.grey[400], size: AppSizes.iconS),
+                      ),
+                    IconButton(
+                      tooltip: 'Filter by date',
+                      onPressed: _pickRange,
+                      icon: Icon(
+                        Icons.date_range_rounded,
+                        size: AppSizes.iconM,
+                        color: _range == null
+                            ? Colors.grey[400]
+                            : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: AppSizes.m),
+              ),
+            ),
+          ),
+          SizedBox(height: AppSizes.s),
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final k in HistoryKind.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(k.label),
+                      selected: _kind == k,
+                      showCheckmark: false,
+                      onSelected: (_) => setState(() => _kind = k),
+                      selectedColor: AppColors.primary,
+                      backgroundColor: Colors.white,
+                      side: BorderSide.none,
+                      labelStyle: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: AppSizes.fontS,
+                        fontWeight: FontWeight.w600,
+                        color: _kind == k ? Colors.white : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                if (_range != null)
+                  InputChip(
+                    label: Text(_rangeLabel(_range!)),
+                    onDeleted: () => setState(() => _range = null),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    side: BorderSide.none,
+                    labelStyle: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontS,
+                      color: AppColors.primary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  /// Extracts the user-entered note from tx.note.
-  /// Transfers embed the counterpart account name after '\x00'; we strip it.
-  /// System-generated notes (bill_paid, salary, initial) return null.
-  String? _userNote(TransactionModel tx) {
-    if (tx.type == 'bill_paid' || tx.type == 'salary' || tx.type == 'initial') {
-      return null;
+  Future<void> _pickRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      // The date picker on the Add page allows dates up to a year ahead.
+      lastDate: DateTime.now().add(const Duration(days: 366)),
+      initialDateRange: _range,
+    );
+    if (picked != null && mounted) setState(() => _range = picked);
+  }
+
+  String _rangeLabel(DateTimeRange r) {
+    String d(DateTime x) => '${AppStrings.monthsShort[x.month]} ${x.day}';
+    return r.start.year == r.end.year && r.start.year == DateTime.now().year
+        ? '${d(r.start)} – ${d(r.end)}'
+        : '${d(r.start)} ${r.start.year} – ${d(r.end)} ${r.end.year}';
+  }
+
+  Widget _noMatchesState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_rounded,
+              color: Colors.grey[300], size: AppSizes.xxl),
+          SizedBox(height: AppSizes.m),
+          Text(
+            'No matching transactions',
+            style: TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: AppSizes.fontL,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          SizedBox(height: AppSizes.s),
+          TextButton(
+            onPressed: () => setState(() {
+              _searchCtrl.clear();
+              _kind = HistoryKind.all;
+              _range = null;
+            }),
+            child: const Text('Clear filters',
+                style: TextStyle(fontFamily: 'Rubik')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Edit / delete ─────────────────────────────────────────────────────────
+
+  Future<void> _editTx(TransactionModel tx) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final edited = await showModalBottomSheet<_TxEdit>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          _EditTxSheet(tx: tx, currency: ref.read(currencyProvider)),
+    );
+    if (edited == null || !mounted) return;
+    final ok = await ref.read(accountsProvider.notifier).updateTransaction(
+        tx.id,
+        amount: edited.amount,
+        title: edited.title,
+        note: edited.note);
+    if (!mounted) return;
+    if (ok) {
+      AppToast.success(messenger, 'Transaction updated');
+    } else {
+      AppToast.error(messenger, 'Balance is too low to apply this change');
     }
-    final raw = tx.type == 'transfer_in' || tx.type == 'transfer_out'
-        ? tx.note.split('\x00').first
-        : tx.note;
-    return raw.isNotEmpty ? raw : null;
+    await _load();
+  }
+
+  Future<void> _deleteTx(TransactionModel tx) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final currency = ref.read(currencyProvider);
+    final isDeposit = tx.type == 'deposit';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusXL)),
+        title: const Text(
+          'Delete transaction',
+          style: TextStyle(
+              fontFamily: 'Rubik',
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary),
+        ),
+        content: Text(
+          'The ${fmtAmt(tx.amount, currency)} will be '
+          '${isDeposit ? 'taken out of' : 'returned to'} '
+          '${widget.accountName}.\n\nThis cannot be undone.',
+          style: const TextStyle(fontFamily: 'Rubik', height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(AppStrings.cancel,
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[500])),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.myRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusM)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(AppStrings.delete,
+                style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final ok = await ref.read(accountsProvider.notifier).deleteTransaction(tx.id);
+    if (!mounted) return;
+    if (ok) {
+      AppToast.success(messenger, 'Transaction deleted');
+    } else {
+      AppToast.error(
+          messenger, 'Balance is too low to take this deposit back out');
+    }
+    await _load();
   }
 
   /// Returns a "From X" / "To X" subtitle for transfer transactions.
@@ -504,4 +790,173 @@ class _Item {
   const _Item.tx(this.tx)
       : isHeader = false,
         month = null;
+}
+
+// ── Edit sheet ────────────────────────────────────────────────────────────────
+
+typedef _TxEdit = ({double amount, String title, String note});
+
+class _EditTxSheet extends StatefulWidget {
+  final TransactionModel tx;
+  final String currency;
+  const _EditTxSheet({required this.tx, required this.currency});
+
+  @override
+  State<_EditTxSheet> createState() => _EditTxSheetState();
+}
+
+class _EditTxSheetState extends State<_EditTxSheet> {
+  late final _amount =
+      TextEditingController(text: plainAmt(widget.tx.amount));
+  late final _title = TextEditingController(text: widget.tx.title);
+  late final _note = TextEditingController(text: widget.tx.note);
+  String? _error;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _title.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final amount = double.tryParse(_amount.text.trim());
+    if (amount == null || !(amount > 0)) {
+      setState(() => _error = AppStrings.enterValidAmount);
+      return;
+    }
+    final title = _title.text.trim();
+    Navigator.pop<_TxEdit>(context, (
+      amount: amount,
+      // Same fallback as the Add page uses for an empty title.
+      title: title.isNotEmpty
+          ? title
+          : (widget.tx.type == 'deposit'
+              ? AppStrings.deposit
+              : AppStrings.withdraw),
+      note: _note.text.trim(),
+    ));
+  }
+
+  Widget _field(TextEditingController ctrl, String label,
+      {bool numeric = false, String? suffix, String? error}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.pageBackground,
+        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+      ),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: numeric
+            ? const TextInputType.numberWithOptions(decimal: true)
+            : TextInputType.text,
+        inputFormatters: numeric
+            ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
+            : null,
+        onChanged: numeric && _error != null
+            ? (_) => setState(() => _error = null)
+            : null,
+        style: TextStyle(
+          fontFamily: 'Rubik',
+          fontSize: AppSizes.fontM,
+          color: AppColors.primary,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(fontFamily: 'Rubik', color: Colors.grey[400]),
+          suffixText: suffix,
+          errorText: error,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppSizes.radiusXXL)),
+        ),
+        padding:
+            EdgeInsets.fromLTRB(AppSizes.l, AppSizes.m, AppSizes.l, AppSizes.l),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Center(child: ModalHandle()),
+              SizedBox(height: AppSizes.l),
+              Text(
+                'Edit transaction',
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: AppSizes.fontXXL,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primary,
+                ),
+              ),
+              SizedBox(height: AppSizes.l),
+              _field(_amount, AppStrings.amount,
+                  numeric: true, suffix: widget.currency, error: _error),
+              SizedBox(height: AppSizes.s),
+              _field(_title, AppStrings.titleOptional),
+              SizedBox(height: AppSizes.s),
+              _field(_note, AppStrings.noteOptional),
+              SizedBox(height: AppSizes.l),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey[200]!),
+                        padding: EdgeInsets.symmetric(vertical: AppSizes.m),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusL)),
+                      ),
+                      child: Text(AppStrings.cancel,
+                          style: TextStyle(
+                              fontFamily: 'Rubik',
+                              fontWeight: FontWeight.w600,
+                              fontSize: AppSizes.fontM,
+                              color: Colors.grey[500])),
+                    ),
+                  ),
+                  SizedBox(width: AppSizes.s + 4),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        elevation: 0,
+                        padding: EdgeInsets.symmetric(vertical: AppSizes.m),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppSizes.radiusL)),
+                      ),
+                      child: Text(AppStrings.save,
+                          style: TextStyle(
+                              fontFamily: 'Rubik',
+                              fontWeight: FontWeight.w600,
+                              fontSize: AppSizes.fontM,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

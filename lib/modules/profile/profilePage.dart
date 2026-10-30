@@ -3,11 +3,16 @@
 // salary, budget and currency, and contains a danger-zone section for
 // resetting all app data back to the onboarding state.
 // ─────────────────────────────────────────────────────────────────────────────
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:financeapp/main.dart';
 import 'package:financeapp/shared/overlays/profile_deleted_overlay.dart';
 import 'package:financeapp/modules/profile/profile_picker_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
@@ -16,6 +21,8 @@ import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
 
 class Profilepage extends ConsumerStatefulWidget {
   const Profilepage({super.key});
@@ -134,6 +141,134 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
       _deletedInitial = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
       _onDeleteComplete = () => appConfigNotifier.value = config;
     });
+  }
+
+  // ── Backup ────────────────────────────────────────────────────────────────
+
+  bool _backupBusy = false;
+
+  Future<void> _exportBackup({required bool share}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _backupBusy = true);
+    try {
+      final json = await ref.read(dbProvider).exportBackup();
+      final name =
+          'financeapp-backup-${DateTime.now().toIso8601String().substring(0, 10)}.json';
+      if (share) {
+        final file = File(p.join(Directory.systemTemp.path, name));
+        await file.writeAsString(json);
+        await SharePlus.instance.share(ShareParams(
+          files: [XFile(file.path, mimeType: 'application/json')],
+          fileNameOverrides: [name],
+        ));
+      } else {
+        final saved = await FilePicker.saveFile(
+          fileName: name,
+          bytes: utf8.encoder.convert(json),
+          mimeType: 'application/json',
+        );
+        if (saved != null) AppToast.success(messenger, 'Backup saved');
+      }
+    } catch (_) {
+      AppToast.error(messenger, 'Could not export the backup');
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await FilePicker.pickFiles();
+    if (picked.isEmpty || !mounted) return;
+
+    setState(() => _backupBusy = true);
+    try {
+      final BackupRows backup;
+      try {
+        backup = AppDatabase.parseBackup(
+            utf8.decode(await picked.first.readAsBytes(), allowMalformed: true));
+      } on FormatException catch (e) {
+        AppToast.error(messenger, e.message);
+        return;
+      }
+      if (!mounted) return;
+      if (await _confirmRestore(backup) != true || !mounted) return;
+
+      try {
+        await ref.read(dbProvider).restoreBackup(backup);
+      } catch (_) {
+        AppToast.error(
+            messenger, 'Restore failed — your current data is unchanged');
+        return;
+      }
+      await Future.wait([
+        ref.read(userProvider.notifier).reload(),
+        ref.read(accountsProvider.notifier).reload(),
+        ref.read(expensesProvider.notifier).reload(),
+      ]);
+      AppToast.success(messenger, 'Backup restored');
+    } finally {
+      if (mounted) setState(() => _backupBusy = false);
+    }
+  }
+
+  Future<bool?> _confirmRestore(BackupRows b) {
+    final when = b.exportedAt;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+        ),
+        title: const Text(
+          AppStrings.restoreBackup,
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            fontWeight: FontWeight.bold,
+            color: AppColors.primary,
+          ),
+        ),
+        content: Text(
+          '${b.user['name']} · ${b.transactions.length} transactions, '
+          '${b.accounts.length} accounts, ${b.bills.length} bills'
+          '${when == null ? '' : '\nExported ${when.toIso8601String().substring(0, 10)}'}'
+          '\n\nEverything currently in this profile will be replaced. '
+          'This cannot be undone.',
+          style: const TextStyle(fontFamily: 'Rubik', height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              AppStrings.cancel,
+              style: TextStyle(
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[500],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.myRed,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusM),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Restore',
+              style: TextStyle(
+                fontFamily: 'Rubik',
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _switchProfile() {
@@ -398,6 +533,52 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
               ),
               SizedBox(height: AppSizes.l),
 
+              // ── Backup ───────────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.only(bottom: AppSizes.s),
+                child: SectionLabel(AppStrings.sectionBackup),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    _BackupRow(
+                      icon: Icons.save_alt_rounded,
+                      title: AppStrings.exportBackup,
+                      subtitle: AppStrings.exportBackupSubtitle,
+                      isFirst: true,
+                      onTap: _backupBusy ? null : () => _exportBackup(share: false),
+                    ),
+                    _divider(),
+                    _BackupRow(
+                      icon: Icons.ios_share_rounded,
+                      title: AppStrings.shareBackup,
+                      subtitle: AppStrings.shareBackupSubtitle,
+                      onTap: _backupBusy ? null : () => _exportBackup(share: true),
+                    ),
+                    _divider(),
+                    _BackupRow(
+                      icon: Icons.settings_backup_restore_rounded,
+                      title: AppStrings.restoreBackup,
+                      subtitle: AppStrings.restoreBackupSubtitle,
+                      isLast: true,
+                      onTap: _backupBusy ? null : _restoreBackup,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: AppSizes.l),
+
               // ── Danger zone label ────────────────────────────────
               Padding(
                 padding: EdgeInsets.only(bottom: AppSizes.s),
@@ -656,6 +837,85 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Backup Row Widget ─────────────────────────────────────────────────────────
+
+class _BackupRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final bool isFirst;
+  final bool isLast;
+
+  const _BackupRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.isFirst = false,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? Radius.circular(AppSizes.radiusXL) : Radius.zero,
+          bottom: isLast ? Radius.circular(AppSizes.radiusXL) : Radius.zero,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.m, vertical: AppSizes.m),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.blueIconBg,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusM),
+                ),
+                child: Icon(icon, color: AppColors.blueIcon, size: AppSizes.iconM),
+              ),
+              SizedBox(width: AppSizes.m),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: AppSizes.fontM,
+                        fontFamily: 'Rubik',
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: AppSizes.fontXS,
+                        fontFamily: 'Rubik',
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color: Colors.grey[300], size: 22),
             ],
           ),
         ),

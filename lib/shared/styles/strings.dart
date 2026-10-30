@@ -93,6 +93,15 @@ class AppStrings {
       'This will erase all data for this profile — accounts, transactions, bills, and settings. Other profiles will not be affected.\n\nThis cannot be undone.';
   static const String reset = 'Reset';
 
+  // ── Backup ────────────────────────────────────────────────────────────────
+  static const String sectionBackup = 'BACKUP';
+  static const String exportBackup = 'Save Backup';
+  static const String exportBackupSubtitle = 'Save a copy of this profile\'s data to your device';
+  static const String shareBackup = 'Share Backup';
+  static const String shareBackupSubtitle = 'Send the backup file to another app';
+  static const String restoreBackup = 'Restore Backup';
+  static const String restoreBackupSubtitle = 'Replace this profile\'s data from a file';
+
   // ── Fixed Expenses ────────────────────────────────────────────────────────
   static const String addBillTitle = 'Add Bill';
   static const String editBillTitle = 'Edit Bill';

@@ -154,6 +154,35 @@ void main() {
         reason: 'card shows $live but the chart ends at ${d.savingsHistory.last}');
   });
 
+  test('savings change this month leaves out the starting balance', () async {
+    final n = c.read(accountsProvider.notifier);
+    await db.insertTransaction(mkTx(kSavingsId, 'initial', 100));
+    expect((await load()).savingsChangeThisMonth, 0,
+        reason: 'only the seeded balance exists');
+
+    await n.deposit(kSavingsId, 10.25, mkTx(kSavingsId, 'deposit', 10.25));
+    expect((await c.read(analyticsProvider.future)).savingsChangeThisMonth, 10.25);
+
+    await n.withdraw(kSavingsId, 4, mkTx(kSavingsId, 'withdraw', 4));
+    expect((await c.read(analyticsProvider.future)).savingsChangeThisMonth, 6.25);
+  });
+
+  test('savings change this month ignores earlier months and counts transfers',
+      () async {
+    final n = c.read(accountsProvider.notifier);
+    await db.insertTransaction(mkTx(kSavingsId, 'deposit', 500, at: monthsAgo(2)));
+    await db.insertTransaction(
+        mkTx(kSavingsId, 'deposit', 7, at: DateTime(now.year, now.month, 1, 0, 0, 1)));
+    await n.transfer(
+      fromId: kWalletId,
+      toId: kSavingsId,
+      amount: 30,
+      txOut: mkTx(kWalletId, 'transfer_out', 30),
+      txIn: mkTx(kSavingsId, 'transfer_in', 30),
+    );
+    expect((await load()).savingsChangeThisMonth, 37);
+  });
+
   test('analytics recompute after a new transaction', () async {
     final before = (await load()).currentMonth.income;
     await c.read(accountsProvider.notifier)

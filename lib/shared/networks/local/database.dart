@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:financeapp/models/account_model.dart';
@@ -6,6 +7,15 @@ import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/models/user_model.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+/// A validated backup, ready for [AppDatabase.restoreBackup].
+typedef BackupRows = ({
+  DateTime? exportedAt,
+  Map<String, Object?> user,
+  List<Map<String, Object?>> accounts,
+  List<Map<String, Object?>> transactions,
+  List<Map<String, Object?>> bills,
+});
 
 /// Per-profile data-access layer for a SQLite database.
 /// Each user profile owns a separate file (e.g. finance_1.db).
@@ -342,6 +352,75 @@ class AppDatabase {
     await db.insert('transactions', tx.toMap());
   }
 
+  /// Types that can be corrected on their own: their only effect is +/- amount
+  /// on their own account. Transfers are two linked rows, bills also flip the
+  /// bill's paid flag and debts also move loaned_amount, so those stay as logged.
+  static const editableTxTypes = {'deposit', 'withdraw'};
+
+  /// Rewrites a deposit/withdraw and moves its account's balance by the
+  /// difference, atomically. Returns false, changing nothing, when the row is
+  /// gone or not editable, [amount] is not positive, or the balance would go
+  /// negative.
+  Future<bool> updateTransaction(int id,
+      {required double amount,
+      required String title,
+      required String note}) async {
+    // "9" * 400 parses to Infinity, which would poison the balance.
+    if (!(amount > 0 && amount.isFinite)) return false;
+    final db = await database;
+    return db.transaction((txn) async {
+      final tx = await _editableTx(txn, id);
+      if (tx == null) return false;
+      final delta = _signed(tx, amount) - _signed(tx, tx.amount);
+      if (!await _shiftBalance(txn, tx.accountId, delta)) return false;
+      await txn.update(
+          'transactions', {'amount': amount, 'title': title, 'note': note},
+          where: 'id = ?', whereArgs: [id]);
+      return true;
+    });
+  }
+
+  /// Deletes a deposit/withdraw and reverses its effect on the balance,
+  /// atomically. Returns false, changing nothing, when the row is gone or not
+  /// editable, or reversing a deposit would take the balance below zero.
+  Future<bool> deleteTransaction(int id) async {
+    final db = await database;
+    return db.transaction((txn) async {
+      final tx = await _editableTx(txn, id);
+      if (tx == null) return false;
+      if (!await _shiftBalance(txn, tx.accountId, -_signed(tx, tx.amount))) {
+        return false;
+      }
+      await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
+      return true;
+    });
+  }
+
+  /// The row as it is on disk right now (never the caller's copy, which may be
+  /// stale), or null when it is missing or not of an editable type.
+  Future<TransactionModel?> _editableTx(DatabaseExecutor ex, int id) async {
+    final rows = await ex.query('transactions', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    final tx = TransactionModel.fromMap(rows.first);
+    return editableTxTypes.contains(tx.type) ? tx : null;
+  }
+
+  /// Effect of an [amount] of this transaction's type on its account balance.
+  double _signed(TransactionModel tx, double amount) =>
+      tx.type == 'deposit' ? amount : -amount;
+
+  /// Adds [delta] to the account balance; false (nothing written) if it would
+  /// end up negative.
+  Future<bool> _shiftBalance(
+      DatabaseExecutor ex, int accountId, double delta) async {
+    final balance = await _balanceOf(ex, accountId) + delta;
+    // Balances are REAL, so a sum of cents can land a hair under zero.
+    if (balance < -1e-9) return false;
+    await ex.update('accounts', {'balance': balance < 0 ? 0.0 : balance},
+        where: 'id = ?', whereArgs: [accountId]);
+    return true;
+  }
+
   // ── Bills ─────────────────────────────────────────────────────────────────
 
   Future<List<ExpenseModel>> getBills() async {
@@ -509,6 +588,119 @@ class AppDatabase {
       {'key': key, 'value': '1'},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  // ── Backup ────────────────────────────────────────────────────────────────
+
+  static const _backupVersion = 1;
+
+  /// Everything the user entered (profile, accounts, transactions, bills) as
+  /// JSON text. Settings (tutorial flags) are not data and are left out.
+  Future<String> exportBackup() async {
+    final db = await database;
+    // One transaction so the four tables are read as a single snapshot.
+    return db.transaction((txn) async => jsonEncode({
+          'app': 'financeapp',
+          'version': _backupVersion,
+          'exportedAt': DateTime.now().toIso8601String(),
+          'user': await txn.query('user'),
+          'accounts': await txn.query('accounts', orderBy: 'id ASC'),
+          'transactions': await txn.query('transactions', orderBy: 'id ASC'),
+          'bills': await txn.query('bills', orderBy: 'id ASC'),
+        }));
+  }
+
+  /// Checks backup [json] and returns the rows to restore, rebuilt through the
+  /// models so nothing but known columns of the right type reaches SQLite.
+  /// Throws [FormatException] when the text is not a usable backup.
+  static BackupRows parseBackup(String json) {
+    const invalid = FormatException('This file is not a valid FinanceApp backup');
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(json);
+    } on FormatException {
+      throw invalid; // jsonDecode's own message ("Unexpected character...") means nothing to the user
+    }
+    try {
+      final data = decoded as Map<String, dynamic>;
+      if (data['app'] != 'financeapp') throw invalid;
+      if ((data['version'] as int) > _backupVersion) {
+        throw const FormatException(
+            'This backup was made by a newer version of the app');
+      }
+      List<Map<String, dynamic>> rows(String key) => [
+            for (final r in data[key] as List) Map<String, dynamic>.from(r as Map),
+          ];
+
+      final users = rows('user');
+      if (users.length != 1) throw invalid;
+      final user = UserModel.fromMap(users.first);
+
+      final accounts = [for (final r in rows('accounts')) AccountModel.fromMap(r)];
+      final ids = {for (final a in accounts) a.id};
+      const builtIn = {
+        kWalletId: AccountType.wallet,
+        kBudgetId: AccountType.budget,
+        kSavingsId: AccountType.savings,
+      };
+      if (ids.length != accounts.length || !ids.containsAll(builtIn.keys)) {
+        throw invalid;
+      }
+      // fromKey silently maps an unknown type to wallet, so check the raw text.
+      for (final (i, r) in rows('accounts').indexed) {
+        if (r['type'] != (builtIn[accounts[i].id] ?? AccountType.custom).key) {
+          throw invalid;
+        }
+      }
+
+      final txs = [for (final r in rows('transactions')) TransactionModel.fromMap(r)];
+      if (txs.any((t) => !ids.contains(t.accountId))) throw invalid;
+
+      return (
+        exportedAt: DateTime.tryParse(data['exportedAt'] as String? ?? ''),
+        user: user.toMap(),
+        accounts: [for (final a in accounts) a.toMap()],
+        transactions: [for (final t in txs) {...t.toMap(), 'id': t.id}],
+        bills: [
+          for (final r in rows('bills'))
+            {
+              'id': r['id'] as int,
+              'name': r['name'] as String,
+              'amount': (r['amount'] as num).toDouble(),
+              'is_paid': (r['is_paid'] as int) == 1 ? 1 : 0,
+              'category': r['category'] as String? ?? '',
+            },
+        ],
+      );
+    } on FormatException {
+      rethrow;
+    } catch (_) {
+      // A missing key or a wrong type surfaces as a TypeError.
+      throw invalid;
+    }
+  }
+
+  /// Replaces this profile's data with [backup] (from [parseBackup]) in one
+  /// SQLite transaction: if anything fails, the current data is untouched.
+  Future<void> restoreBackup(BackupRows backup) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final b = txn.batch();
+      for (final t in ['transactions', 'bills', 'accounts', 'user']) {
+        b.delete(t);
+      }
+      b.insert('user', backup.user);
+      for (final r in backup.accounts) {
+        b.insert('accounts', r);
+      }
+      for (final r in backup.transactions) {
+        b.insert('transactions', r);
+      }
+      for (final r in backup.bills) {
+        b.insert('bills', r);
+      }
+      await b.commit(noResult: true);
+    });
   }
 
   // ── Reset ─────────────────────────────────────────────────────────────────

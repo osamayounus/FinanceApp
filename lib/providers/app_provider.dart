@@ -31,6 +31,12 @@ class UserNotifier extends StateNotifier<UserModel> {
         name: name, salary: salary, monthlyBudget: monthlyBudget);
     await _db.updateUser(state);
   }
+
+  /// Re-reads the user from disk (after a backup restore).
+  Future<void> reload() async {
+    final user = await _db.getUser();
+    if (user != null) state = user;
+  }
 }
 
 final userProvider =
@@ -63,6 +69,30 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
       for (final a in state)
         if (a.id == updated.id) updated else a,
     ];
+  }
+
+  /// Re-reads every account from disk (after an edit/delete of a transaction
+  /// or a backup restore), so the state can never drift from what is stored.
+  Future<void> reload() async => state = await _db.getAccounts();
+
+  /// Corrects a deposit/withdraw; the balance moves by the difference.
+  /// Returns false (nothing changed) per [AppDatabase.updateTransaction].
+  Future<bool> updateTransaction(int id,
+      {required double amount,
+      required String title,
+      required String note}) async {
+    final ok = await _db.updateTransaction(id,
+        amount: amount, title: title, note: note);
+    if (ok) await reload();
+    return ok;
+  }
+
+  /// Removes a deposit/withdraw and reverses it on the balance.
+  /// Returns false (nothing changed) per [AppDatabase.deleteTransaction].
+  Future<bool> deleteTransaction(int id) async {
+    final ok = await _db.deleteTransaction(id);
+    if (ok) await reload();
+    return ok;
   }
 
   /// Returns false if [amount] is not a positive number.
@@ -288,6 +318,9 @@ class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
     await _db.resetAllBills();
     state = state.map((b) => b.copyWith(isPaid: false)).toList();
   }
+
+  /// Re-reads the bills from disk (after a backup restore).
+  Future<void> reload() async => state = await _db.getBills();
 }
 
 // Keep the name 'expensesProvider' so FixedExpensesPage needs minimal changes.
@@ -391,10 +424,17 @@ AnalyticsData _computeAnalytics(
     currentMonthTimeline.add(runningBal);
   }
 
+  // What the user actually did with savings this month. The seeded starting
+  // balance ('initial') is not something they added, so it is left out.
+  final savingsChangeThisMonth = currentMonthTxs
+      .where((tx) => tx.type != 'initial')
+      .fold(0.0, (sum, tx) => sum + _savingsDelta(tx));
+
   return AnalyticsData(
     months: months,
     savingsHistory: savingsHistory,
     currentMonthTimeline: currentMonthTimeline,
+    savingsChangeThisMonth: savingsChangeThisMonth,
   );
 }
 
