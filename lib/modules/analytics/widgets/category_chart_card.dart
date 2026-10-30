@@ -9,6 +9,7 @@ import 'package:financeapp/models/expense_model.dart';
 import 'package:financeapp/modules/fixedExp/bill_categories.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 
 // ── CategoryChartCard ─────────────────────────────────────────────────────────
 
@@ -62,9 +63,7 @@ class _CategoryChartCardState extends State<CategoryChartCard> {
       );
     });
 
-    final totalStr = grandTotal % 1 == 0
-        ? grandTotal.toInt().toString()
-        : grandTotal.toStringAsFixed(2);
+    final totalStr = fmtNum(grandTotal, widget.currency);
 
     return Container(
       padding: EdgeInsets.all(AppSizes.m),
@@ -264,9 +263,7 @@ class _DonutCenter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final amountStr = amount % 1 == 0
-        ? amount.toInt().toString()
-        : amount.toStringAsFixed(2);
+    final amountStr = fmtNum(amount, currency);
 
     return Column(
       mainAxisSize: MainAxisSize.min,

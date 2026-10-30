@@ -11,6 +11,7 @@ import 'package:financeapp/models/analytics_model.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 
 // ── SavingsChartCard ──────────────────────────────────────────────────────────
 
@@ -93,9 +94,7 @@ class SavingsChartCard extends StatelessWidget {
     final current = history.last;
     final oldest = history.first;
     final delta = current - oldest;
-    final deltaStr = delta % 1 == 0
-        ? '${delta >= 0 ? '+' : ''}${delta.toInt()}'
-        : '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(2)}';
+    final deltaStr = '${delta >= 0 ? '+' : ''}${fmtNum(delta, currency)}';
     final deltaColor = delta >= 0 ? AppColors.myGreen : AppColors.myRed;
     final trendIcon = delta >= 0
         ? Icons.trending_up_rounded
@@ -267,9 +266,7 @@ class SavingsChartCard extends StatelessWidget {
                     getTooltipItems: (touchedSpots) =>
                         touchedSpots.map((spot) {
                       final bal = spot.y;
-                      final balStr = bal % 1 == 0
-                          ? bal.toInt().toString()
-                          : bal.toStringAsFixed(2);
+                      final balStr = fmtNum(bal, currency);
                       return LineTooltipItem(
                         '$balStr $currency',
                         const TextStyle(

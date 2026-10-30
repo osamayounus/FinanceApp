@@ -4,9 +4,11 @@ import 'package:financeapp/models/profile_entry.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+const int kMaxProfiles = 3;
+
 /// Manages the list of user profiles stored in a dedicated `profiles.db`.
 /// Each profile maps to its own finance database file (`finance_N.db`).
-/// Max 3 profiles per device.
+/// Max [kMaxProfiles] profiles per device.
 class ProfileManager {
   static final ProfileManager instance = ProfileManager._();
   ProfileManager._();
@@ -61,6 +63,9 @@ class ProfileManager {
   }
 
   Future<ProfileEntry> createProfile(String name) async {
+    if ((await getProfiles()).length >= kMaxProfiles) {
+      throw StateError('Profile limit reached ($kMaxProfiles)');
+    }
     final db = await _database;
     final id = await db.insert('profiles', {'name': name});
     return ProfileEntry(id: id, name: name);
@@ -70,6 +75,7 @@ class ProfileManager {
   Future<void> deleteProfile(int id) async {
     final db = await _database;
     await db.delete('profiles', where: 'id = ?', whereArgs: [id]);
+    if (await getActiveProfileId() == id) await clearActiveProfile();
     final dbPath = await getDatabasesPath();
     final file = File(join(dbPath, dbFileFor(id)));
     if (await file.exists()) await file.delete();

@@ -428,6 +428,13 @@ class _CustomAccountDetailPageState
   }
 
   Future<void> _handleDelete(BuildContext context) async {
+    if (widget.account.loanedAmount > 0) {
+      AppToast.error(
+        ScaffoldMessenger.of(context),
+        'Collect the ${fmtAmt(widget.account.loanedAmount, ref.read(currencyProvider))} you lent out before deleting this account',
+      );
+      return;
+    }
     final hasBalance = widget.account.balance > 0;
 
     if (!hasBalance) {

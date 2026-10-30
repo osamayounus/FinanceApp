@@ -12,6 +12,7 @@ import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,22 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
   bool _showDeleted = false;
   String _deletedInitial = '?';
   VoidCallback? _onDeleteComplete;
+
+  /// Saves the salary or monthly budget; returns an error message instead when
+  /// the result would break the budget < salary rule (salary day would then
+  /// debit the wallet).
+  String? _saveMoney(String val, {required bool isSalary}) {
+    final amount = double.tryParse(val);
+    if (amount == null || amount <= 0) return AppStrings.enterValidAmount;
+    final user = ref.read(userProvider);
+    final salary = isSalary ? amount : user.salary;
+    final budget = isSalary ? user.monthlyBudget : amount;
+    if (budget >= salary) {
+      return 'Budget must be less than your salary (${fmtAmt(salary, user.currency)})';
+    }
+    ref.read(userProvider.notifier).update(salary: salary, monthlyBudget: budget);
+    return null;
+  }
 
   Future<void> _confirmReset() async {
     final confirmed = await showDialog<bool>(
@@ -93,7 +110,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     final activeId = await pm.getActiveProfileId();
 
     // Capture profile initial before wiping.
-    final userName = ref.read(userProvider)?.name ?? '';
+    final userName = ref.read(userProvider).name;
 
     // Wipe current profile's data.
     final db = ref.read(dbProvider);
@@ -262,8 +279,10 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                         title: AppStrings.editName,
                         initialValue: user.name,
                         isNumber: false,
-                        onSave: (val) =>
-                            ref.read(userProvider.notifier).update(name: val),
+                        onSave: (val) {
+                          ref.read(userProvider.notifier).update(name: val);
+                          return null;
+                        },
                       ),
                     ),
                     _divider(),
@@ -272,17 +291,15 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       iconColor: AppColors.myGreen,
                       iconBg: AppColors.myGreen.withValues(alpha: 0.1),
                       label: AppStrings.monthlySalary,
-                      value: '${user.salary.toInt()} $currency',
+                      value: fmtAmt(user.salary, currency),
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
                         title: AppStrings.editSalary,
-                        initialValue: user.salary.toInt().toString(),
+                        initialValue: plainAmt(user.salary),
                         isNumber: true,
                         suffix: currency,
-                        onSave: (val) => ref
-                            .read(userProvider.notifier)
-                            .update(salary: double.tryParse(val)),
+                        onSave: (val) => _saveMoney(val, isSalary: true),
                       ),
                     ),
                     _divider(),
@@ -291,18 +308,16 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                       iconColor: AppColors.myRed,
                       iconBg: AppColors.myRed.withValues(alpha: 0.1),
                       label: AppStrings.monthlyBudget,
-                      value: '${user.monthlyBudget.toInt()} $currency',
+                      value: fmtAmt(user.monthlyBudget, currency),
                       isLast: true,
                       onTap: () => _showEditSheet(
                         context: context,
                         ref: ref,
                         title: AppStrings.editMonthlyBudget,
-                        initialValue: user.monthlyBudget.toInt().toString(),
+                        initialValue: plainAmt(user.monthlyBudget),
                         isNumber: true,
                         suffix: currency,
-                        onSave: (val) => ref
-                            .read(userProvider.notifier)
-                            .update(monthlyBudget: double.tryParse(val)),
+                        onSave: (val) => _saveMoney(val, isSalary: false),
                       ),
                     ),
                   ],
@@ -508,7 +523,7 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     required String title,
     required String initialValue,
     required bool isNumber,
-    required void Function(String) onSave,
+    required String? Function(String) onSave,
     String? suffix,
   }) {
     final ctrl = TextEditingController(text: initialValue);
@@ -552,10 +567,11 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                 child: TextField(
                   controller: ctrl,
                   autofocus: true,
-                  keyboardType:
-                      isNumber ? TextInputType.number : TextInputType.text,
+                  keyboardType: isNumber
+                      ? const TextInputType.numberWithOptions(decimal: true)
+                      : TextInputType.text,
                   inputFormatters: isNumber
-                      ? [FilteringTextInputFormatter.digitsOnly]
+                      ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))]
                       : null,
                   style: TextStyle(
                     fontSize: AppSizes.fontXL,
@@ -608,10 +624,14 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        if (ctrl.text.trim().isNotEmpty) {
-                          onSave(ctrl.text.trim());
-                        }
+                        final error = ctrl.text.trim().isEmpty
+                            ? null
+                            : onSave(ctrl.text.trim());
                         Navigator.pop(ctx);
+                        // Shown after the sheet closes, otherwise it hides under it.
+                        if (error != null) {
+                          AppToast.error(ScaffoldMessenger.of(context), error);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

@@ -22,6 +22,17 @@ class TransactionModel {
     required this.createdAt,
   });
 
+  TransactionModel withAmount(double amount) => TransactionModel(
+        id: id,
+        accountId: accountId,
+        type: type,
+        amount: amount,
+        title: title,
+        note: note,
+        relatedAccountId: relatedAccountId,
+        createdAt: createdAt,
+      );
+
   Map<String, dynamic> toMap() => {
         'account_id': accountId,
         'type': type,

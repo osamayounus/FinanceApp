@@ -15,6 +15,7 @@ import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,9 +90,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   void _showBottomSheet({ExpenseModel? item, int? index}) {
     if (item != null) {
       _nameCtrl.text = item.name;
-      _amountCtrl.text = item.amount % 1 == 0
-          ? item.amount.toInt().toString()
-          : item.amount.toStringAsFixed(2);
+      _amountCtrl.text = plainAmt(item.amount);
     } else {
       _nameCtrl.clear();
       _amountCtrl.clear();
@@ -353,6 +352,11 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                   child: _primaryBtn('Confirm', () async {
                     Navigator.pop(ctx);
                     final messenger = ScaffoldMessenger.of(context);
+                    // Look the bill up before charging: if it was deleted or
+                    // paid meanwhile, charging would debit the wallet for nothing.
+                    final bills = ref.read(expensesProvider);
+                    final realIndex = bills.indexWhere((b) => b.id == bill.id);
+                    if (realIndex == -1 || bills[realIndex].isPaid) return;
                     final tx = TransactionModel(
                       id: 0,
                       accountId: kWalletId,
@@ -372,16 +376,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       );
                       return;
                     }
-                    // Find the real index in the full list
-                    final allBills = ref.read(expensesProvider);
-                    final realIndex = allBills.indexWhere(
-                      (b) => b.id == bill.id,
-                    );
-                    if (realIndex != -1) {
-                      await ref
-                          .read(expensesProvider.notifier)
-                          .markPaid(realIndex);
-                    }
+                    await ref
+                        .read(expensesProvider.notifier)
+                        .markPaid(realIndex);
                     AppToast.success(
                       messenger,
                       '${bill.name} paid · - ${_fmtAmt(bill.amount)} ${ref.read(currencyProvider)}',
@@ -515,8 +512,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     );
   }
 
-  String _fmtAmt(double v) =>
-      v % 1 == 0 ? v.toInt().toString() : v.toStringAsFixed(2);
+  String _fmtAmt(double v) => fmtNum(v, ref.read(currencyProvider));
 
   Widget _cancelBtn(VoidCallback onPressed) => OutlinedButton(
     onPressed: onPressed,

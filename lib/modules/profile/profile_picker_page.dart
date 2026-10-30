@@ -21,8 +21,6 @@ import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 
-const int kMaxProfiles = 3;
-
 // Snapshot of a single profile's financial data, loaded once on init.
 class _ProfileSnapshot {
   final ProfileEntry profile;

@@ -8,6 +8,7 @@ import 'package:financeapp/models/analytics_model.dart';
 import 'package:financeapp/models/expense_model.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 
 // ── Data class ────────────────────────────────────────────────────────────────
 
@@ -105,9 +106,7 @@ class SmartInsightsCard extends StatelessWidget {
           data.savingsHistory.last -
           data.savingsHistory[data.savingsHistory.length - 2];
       if (delta.abs() > 0) {
-        final amt = delta.abs() % 1 == 0
-            ? delta.abs().toInt().toString()
-            : delta.abs().toStringAsFixed(2);
+        final amt = fmtNum(delta.abs(), currency);
         if (delta > 0) {
           out.add(
             _Insight(

@@ -8,6 +8,7 @@ import 'package:financeapp/models/analytics_model.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 
 // ── SpendingChartCard ─────────────────────────────────────────────────────────
 
@@ -191,9 +192,7 @@ class SpendingChartCard extends StatelessWidget {
                       final label = rodIndex == 0 ? 'Income' : 'Spent';
                       final amount =
                           rodIndex == 0 ? m.income : m.expenses;
-                      final amountStr = amount % 1 == 0
-                          ? amount.toInt().toString()
-                          : amount.toStringAsFixed(2);
+                      final amountStr = fmtNum(amount, currency);
                       return BarTooltipItem(
                         '$label\n$amountStr $currency',
                         const TextStyle(

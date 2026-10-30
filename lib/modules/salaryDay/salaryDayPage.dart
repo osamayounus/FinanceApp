@@ -6,10 +6,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/overlays/salary_day_overlay.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/tutorial/tutorial_overlay.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
@@ -165,7 +167,7 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
             ),
             SizedBox(height: AppSizes.s),
             Text(
-              'Salary: ${user.salary.toInt()} $currency\nBudget: ${user.monthlyBudget.toInt()} $currency\n\nThis will update your balances and reset all bills.',
+              'Salary: ${fmtAmt(user.salary, currency)}\nBudget: ${fmtAmt(user.monthlyBudget, currency)}\n\nThis will update your balances and reset all bills.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Rubik',
@@ -241,10 +243,17 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
     final budgetBefore =
         accounts.firstWhere((a) => a.id == kBudgetId).balance;
 
-    await ref
-        .read(accountsProvider.notifier)
-        .processSalaryDay(user.salary, user.monthlyBudget);
-    ref.read(expensesProvider.notifier).resetAll();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(accountsProvider.notifier)
+          .processSalaryDay(user.salary, user.monthlyBudget);
+    } on ArgumentError catch (e) {
+      // Stored salary/budget from before the profile editor was validated.
+      AppToast.error(messenger, '${e.message} — fix it in your profile first');
+      return;
+    }
+    await ref.read(expensesProvider.notifier).resetAll();
 
     if (!mounted) return;
     setState(() {

@@ -8,6 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 
 class TransferSuccessPage extends StatefulWidget {
@@ -107,12 +108,7 @@ class _TransferSuccessPageState extends State<TransferSuccessPage>
     super.dispose();
   }
 
-  String _formatCounter(double value) {
-    if (value == value.floorToDouble()) {
-      return value.toInt().toString();
-    }
-    return value.toStringAsFixed(2);
-  }
+  String _formatCounter(double value) => fmtNum(value, widget.currency);
 
   @override
   Widget build(BuildContext context) {

@@ -2,6 +2,7 @@ import 'package:financeapp/models/expense_model.dart';
 import 'package:financeapp/modules/fixedExp/bill_categories.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 
 // ── Slidable expense card ─────────────────────────────────────────────────────
@@ -305,7 +306,7 @@ class ExpenseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${item.amount % 1 == 0 ? item.amount.toInt() : item.amount.toStringAsFixed(2)} $currency',
+                        fmtAmt(item.amount, currency),
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontXXL - 2,

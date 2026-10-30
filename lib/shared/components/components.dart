@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 import 'package:flutter/material.dart';
 
 export 'transaction_card.dart';
@@ -38,8 +39,7 @@ class CardBalanceSection extends StatelessWidget {
   bool get _hasDebt => loanedAmount > 0;
   double get _total => available + loanedAmount;
 
-  String _fmt(double v) =>
-      v % 1 == 0 ? '${v.toInt()}' : v.toStringAsFixed(2);
+  String _fmt(double v) => fmtNum(v, currency);
 
   static const _debtAmber = Color(0xFFFFB300);
 

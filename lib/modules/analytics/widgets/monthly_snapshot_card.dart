@@ -7,6 +7,7 @@ import 'package:financeapp/models/analytics_model.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
+import 'package:financeapp/shared/utils/currency.dart';
 
 // ── MonthlySnapshotCard ───────────────────────────────────────────────────────
 
@@ -127,10 +128,7 @@ class _StatBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show integer when no fractional part to avoid ".00" noise.
-    final amountStr = amount % 1 == 0
-        ? amount.toInt().toString()
-        : amount.toStringAsFixed(2);
+    final amountStr = fmtNum(amount, currency);
 
     return Container(
       padding: EdgeInsets.all(AppSizes.s),
@@ -205,10 +203,8 @@ class _BudgetBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final usedStr =
-        used % 1 == 0 ? used.toInt().toString() : used.toStringAsFixed(2);
-    final totalStr =
-        total % 1 == 0 ? total.toInt().toString() : total.toStringAsFixed(2);
+    final usedStr = fmtNum(used, currency);
+    final totalStr = fmtNum(total, currency);
     final pctInt = (pct * 100).round();
     // Switch bar to red as a warning when the user is near the budget limit.
     final barColor = pct > 0.85 ? AppColors.myRed : AppColors.myGreen;

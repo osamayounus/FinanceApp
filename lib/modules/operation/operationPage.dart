@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
@@ -118,8 +119,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     bool success;
     switch (_operation) {
       case 'deposit':
-        await ref.read(accountsProvider.notifier).deposit(_account!.id, amount, tx);
-        success = true;
+        success = await ref.read(accountsProvider.notifier).deposit(_account!.id, amount, tx);
       case 'withdraw':
         success = await ref.read(accountsProvider.notifier).withdraw(_account!.id, amount, tx);
       case 'debt_out':
@@ -132,9 +132,9 @@ class _OperationPageState extends ConsumerState<OperationPage> {
 
     if (!mounted) return;
     if (!success) {
-      final msg = _operation == 'debt_out'
-          ? 'Insufficient balance in ${_account!.name}'
-          : 'No outstanding debt in ${_account!.name}';
+      final msg = _operation == 'debt_repaid'
+          ? 'No outstanding debt in ${_account!.name}'
+          : 'Insufficient balance in ${_account!.name}';
       AppToast.error(messenger, msg);
       return;
     }
@@ -180,9 +180,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       ...accounts.where((a) => a.isCustom).map((a) => _Account(
             a.id,
             a.displayName,
-            a.iconCode != null
-                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
-                : Icons.savings_rounded,
+            customAccountIcon(a.iconCode),
             a.balance,
             a.loanedAmount,
           )),
@@ -686,7 +684,7 @@ class _AccountCard extends StatelessWidget {
                     children: [
                       TextSpan(
                         text:
-                            '${account.balance % 1 == 0 ? account.balance.toInt() : account.balance.toStringAsFixed(2)} ',
+                            '${fmtNum(account.balance, currency)} ',
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontL,

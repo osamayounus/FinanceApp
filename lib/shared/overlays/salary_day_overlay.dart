@@ -44,7 +44,6 @@ class _SalaryDayOverlayState extends State<SalaryDayOverlay>
   late final Animation<Offset> _row1Slide;
   late final Animation<double> _row2Fade;
   late final Animation<Offset> _row2Slide;
-  late final Animation<double> _subtitleFade;
 
   @override
   void initState() {
@@ -115,13 +114,6 @@ class _SalaryDayOverlayState extends State<SalaryDayOverlay>
             curve: const Interval(0.70, 0.88, curve: Curves.easeOut),
           ),
         );
-    _subtitleFade = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _ctrl,
-        curve: const Interval(0.86, 1.0, curve: Curves.easeIn),
-      ),
-    );
-
     _run();
   }
 

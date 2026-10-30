@@ -46,6 +46,12 @@ const kCustomAccountIcons = <IconData>[
   Icons.savings_rounded,
 ];
 
+/// The icon stored as a code point, taken from the const [kCustomAccountIcons]
+/// (building `IconData(code)` at runtime breaks release icon tree-shaking).
+/// Unknown or missing codes fall back to the savings icon.
+IconData customAccountIcon(int? code) => kCustomAccountIcons
+    .firstWhere((i) => i.codePoint == code, orElse: () => Icons.savings_rounded);
+
 class CustomAccountCard extends ConsumerWidget {
   final AccountModel account;
   const CustomAccountCard({super.key, required this.account});
@@ -55,9 +61,7 @@ class CustomAccountCard extends ConsumerWidget {
     final currency = ref.watch(currencyProvider);
     final colorPair = kCustomAccountColors[
         (account.colorIndex ?? 0).clamp(0, kCustomAccountColors.length - 1)];
-    final iconData = account.iconCode != null
-        ? IconData(account.iconCode!, fontFamily: 'MaterialIcons')
-        : Icons.savings_rounded;
+    final iconData = customAccountIcon(account.iconCode);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXXL),

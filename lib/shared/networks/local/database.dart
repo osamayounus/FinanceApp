@@ -181,6 +181,9 @@ class AppDatabase {
     required double salary,
     required double monthlyBudget,
   }) async {
+    if (monthlyBudget > salary) {
+      throw ArgumentError('Monthly budget cannot exceed the salary');
+    }
     final db = await database;
     final now = DateTime.now();
     final walletBalance = salary - monthlyBudget;
@@ -233,6 +236,44 @@ class AppDatabase {
         where: 'id = ?', whereArgs: [accountId]);
   }
 
+  /// Writes one account's new balance (and, for debt moves, its new
+  /// [loanedAmount]) together with the transaction that caused it, atomically.
+  Future<void> applyTx({
+    required int accountId,
+    required double balance,
+    double? loanedAmount,
+    required TransactionModel tx,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update(
+          'accounts', {'balance': balance, 'loaned_amount': ?loanedAmount},
+          where: 'id = ?', whereArgs: [accountId]);
+      await txn.insert('transactions', tx.toMap());
+    });
+  }
+
+  /// Moves money between two accounts atomically: both balances and both
+  /// transaction rows are written, or none of them are.
+  Future<void> transferFunds({
+    required int fromId,
+    required double fromBalance,
+    required int toId,
+    required double toBalance,
+    required TransactionModel txOut,
+    required TransactionModel txIn,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.update('accounts', {'balance': fromBalance},
+          where: 'id = ?', whereArgs: [fromId]);
+      await txn.update('accounts', {'balance': toBalance},
+          where: 'id = ?', whereArgs: [toId]);
+      await txn.insert('transactions', txOut.toMap());
+      await txn.insert('transactions', txIn.toMap());
+    });
+  }
+
   Future<void> updateLoanedAmount(int accountId, double loaned) async {
     final db = await database;
     await db.update('accounts', {'loaned_amount': loaned},
@@ -263,6 +304,9 @@ class AppDatabase {
   }
 
   Future<void> deleteAccount(int id) async {
+    if (id == kWalletId || id == kBudgetId || id == kSavingsId) {
+      throw ArgumentError('The built-in accounts cannot be deleted');
+    }
     final db = await database;
     // Wrap in a transaction so the account row and its history are deleted
     // atomically — a partial delete would leave orphaned transaction records.
@@ -365,20 +409,20 @@ class AppDatabase {
     required double salary,
     required double monthlyBudget,
   }) async {
+    if (monthlyBudget > salary) {
+      throw ArgumentError('Monthly budget cannot exceed the salary');
+    }
     final db = await database;
     final now = DateTime.now();
-
-    final walletRow = (await db
-            .query('accounts', where: 'id = ?', whereArgs: [kWalletId]))
-        .first;
-    final budgetRow = (await db
-            .query('accounts', where: 'id = ?', whereArgs: [kBudgetId]))
-        .first;
-
-    double walletBalance = (walletRow['balance'] as num).toDouble();
-    double budgetBalance = (budgetRow['balance'] as num).toDouble();
+    double walletBalance = 0;
+    double budgetBalance = 0;
 
     await db.transaction((txn) async {
+      // Read inside the transaction: balances read before it could be stale by
+      // the time we write, silently overwriting a concurrent deposit/withdraw.
+      walletBalance = await _balanceOf(txn, kWalletId);
+      budgetBalance = await _balanceOf(txn, kBudgetId);
+
       // 1. Transfer any leftover budget to wallet
       if (budgetBalance > 0) {
         walletBalance += budgetBalance;
@@ -438,6 +482,15 @@ class AppDatabase {
     });
 
     return {'wallet': walletBalance, 'budget': budgetBalance};
+  }
+
+  Future<double> _balanceOf(DatabaseExecutor ex, int accountId) async {
+    final rows = await ex.query('accounts',
+        columns: ['balance'], where: 'id = ?', whereArgs: [accountId]);
+    if (rows.isEmpty) {
+      throw StateError('Account #$accountId is missing - profile not initialised');
+    }
+    return (rows.first['balance'] as num).toDouble();
   }
 
   // ── Tutorial / Settings ───────────────────────────────────────────────────

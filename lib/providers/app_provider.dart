@@ -49,83 +49,84 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
   AccountModel get budget => state.firstWhere((a) => a.id == kBudgetId);
   AccountModel get savings => state.firstWhere((a) => a.id == kSavingsId);
 
-  Future<void> _setBalance(int accountId, double balance) async {
+  /// Persists [updated] together with [tx] atomically, then publishes it.
+  /// The DB is written before state changes so analyticsProvider reads the
+  /// complete picture when it re-runs, and a failed write leaves both untouched.
+  Future<void> _apply(AccountModel updated, TransactionModel tx) async {
+    await _db.applyTx(
+      accountId: updated.id,
+      balance: updated.balance,
+      loanedAmount: updated.loanedAmount,
+      tx: tx,
+    );
     state = [
       for (final a in state)
-        if (a.id == accountId) a.copyWith(balance: balance) else a,
+        if (a.id == updated.id) updated else a,
     ];
-    await _db.updateBalance(accountId, balance);
   }
 
-  Future<void> deposit(int accountId, double amount, TransactionModel tx) async {
+  /// Returns false if [amount] is not a positive number.
+  Future<bool> deposit(int accountId, double amount, TransactionModel tx) async {
+    if (!(amount > 0)) return false;
     final current = state.firstWhere((a) => a.id == accountId);
-    // Write transaction to DB before updating state so analyticsProvider reads
-    // the complete picture when it re-runs after the state change.
-    await _db.insertTransaction(tx);
-    await _setBalance(accountId, current.balance + amount);
+    await _apply(current.copyWith(balance: current.balance + amount), tx);
+    return true;
   }
 
-  /// Returns false if the account has insufficient funds.
+  /// Returns false if [amount] is not positive or the account has insufficient funds.
   Future<bool> withdraw(int accountId, double amount, TransactionModel tx) async {
+    if (!(amount > 0)) return false;
     final current = state.firstWhere((a) => a.id == accountId);
     if (current.balance < amount) return false;
-    // Same ordering as deposit — transaction in DB before state change.
-    await _db.insertTransaction(tx);
-    await _setBalance(accountId, current.balance - amount);
+    await _apply(current.copyWith(balance: current.balance - amount), tx);
     return true;
   }
 
   /// Lends [amount] from [accountId] to a person.
   /// Decreases available balance and increases loaned_amount.
-  /// Returns false if available balance is insufficient.
+  /// Returns false if [amount] is not positive or available balance is insufficient.
   Future<bool> lendDebt(int accountId, double amount, TransactionModel tx) async {
+    if (!(amount > 0)) return false;
     final current = state.firstWhere((a) => a.id == accountId);
     if (current.balance < amount) return false;
-    await _db.insertTransaction(tx);
-    await _db.updateBalance(accountId, current.balance - amount);
-    await _db.updateLoanedAmount(accountId, current.loanedAmount + amount);
-    state = [
-      for (final a in state)
-        if (a.id == accountId)
-          a.copyWith(
-            balance: current.balance - amount,
-            loanedAmount: current.loanedAmount + amount,
-          )
-        else
-          a,
-    ];
+    await _apply(
+      current.copyWith(
+        balance: current.balance - amount,
+        loanedAmount: current.loanedAmount + amount,
+      ),
+      tx,
+    );
     return true;
   }
 
   /// Records repayment of [amount] from an outstanding debt in [accountId].
-  /// Increases available balance and decreases loaned_amount.
-  /// Returns false if there is no outstanding debt.
+  /// Increases available balance and decreases loaned_amount. An [amount]
+  /// above the outstanding debt is capped, and the logged tx carries the
+  /// capped amount so history matches the balances.
+  /// Returns false if [amount] is not positive or there is no outstanding debt.
   Future<bool> repayDebt(int accountId, double amount, TransactionModel tx) async {
     final current = state.firstWhere((a) => a.id == accountId);
-    if (current.loanedAmount <= 0) return false;
-    final actual = amount.clamp(0.0, current.loanedAmount);
-    await _db.insertTransaction(tx);
-    await _db.updateBalance(accountId, current.balance + actual);
-    await _db.updateLoanedAmount(accountId, current.loanedAmount - actual);
-    state = [
-      for (final a in state)
-        if (a.id == accountId)
-          a.copyWith(
-            balance: current.balance + actual,
-            loanedAmount: current.loanedAmount - actual,
-          )
-        else
-          a,
-    ];
+    if (!(amount > 0) || current.loanedAmount <= 0) return false;
+    final actual =
+        amount > current.loanedAmount ? current.loanedAmount : amount;
+    await _apply(
+      current.copyWith(
+        balance: current.balance + actual,
+        loanedAmount: current.loanedAmount - actual,
+      ),
+      tx.withAmount(actual),
+    );
     return true;
   }
 
-  /// Returns false if the source account has insufficient funds.
+  /// Returns false if [amount] is not positive, the source account has
+  /// insufficient funds, or [fromId] == [toId] (it would credit the account
+  /// instead of leaving it unchanged).
   ///
-  /// All DB writes (balances + transactions) complete before state is updated.
-  /// This ensures analyticsProvider reads a consistent snapshot when it
-  /// re-runs in response to the state change. On local SQLite the writes
-  /// complete in ~1 ms so there is no perceptible delay in the UI.
+  /// The DB writes (balances + both transactions) run in one SQLite
+  /// transaction and complete before state is updated, so a failure leaves
+  /// both the DB and the in-memory state untouched, and analyticsProvider
+  /// reads a consistent snapshot when it re-runs on the state change.
   Future<bool> transfer({
     required int fromId,
     required int toId,
@@ -133,13 +134,18 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     required TransactionModel txOut,
     required TransactionModel txIn,
   }) async {
+    if (fromId == toId || !(amount > 0)) return false;
     final from = state.firstWhere((a) => a.id == fromId);
     if (from.balance < amount) return false;
     final to = state.firstWhere((a) => a.id == toId);
-    await _db.updateBalance(fromId, from.balance - amount);
-    await _db.updateBalance(toId, to.balance + amount);
-    await _db.insertTransaction(txOut);
-    await _db.insertTransaction(txIn);
+    await _db.transferFunds(
+      fromId: fromId,
+      fromBalance: from.balance - amount,
+      toId: toId,
+      toBalance: to.balance + amount,
+      txOut: txOut,
+      txIn: txIn,
+    );
     // Update in-memory state last — analyticsProvider re-runs here and the
     // DB already has the full updated picture.
     state = [
@@ -174,14 +180,7 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     state = [
       for (final a in state)
         if (a.id == accountId)
-          AccountModel(
-            id: a.id,
-            type: a.type,
-            balance: a.balance,
-            customName: name,
-            colorIndex: colorIndex,
-            iconCode: iconCode,
-          )
+          a.copyWith(customName: name, colorIndex: colorIndex, iconCode: iconCode)
         else
           a,
     ];
@@ -190,10 +189,18 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
   /// Deletes a custom account.
   /// When [transferToWallet] is true, the account's remaining balance is swept
   /// into the wallet before deletion so no money is "lost" from the total.
+  /// Throws if the account is built-in or still has money lent out (that debt
+  /// would vanish with the row).
   Future<void> deleteCustomAccount(int accountId,
       {bool transferToWallet = false}) async {
+    final account = state.firstWhere((a) => a.id == accountId);
+    if (!account.isCustom) {
+      throw ArgumentError('Only custom accounts can be deleted');
+    }
+    if (account.loanedAmount > 0) {
+      throw StateError('Account still has money lent out');
+    }
     if (transferToWallet) {
-      final account = state.firstWhere((a) => a.id == accountId);
       if (account.balance > 0) {
         final wallet = state.firstWhere((a) => a.id == kWalletId);
         final now = DateTime.now();
@@ -277,7 +284,8 @@ class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
     ];
   }
 
-  void resetAll() {
+  Future<void> resetAll() async {
+    await _db.resetAllBills();
     state = state.map((b) => b.copyWith(isPaid: false)).toList();
   }
 }
@@ -355,12 +363,11 @@ AnalyticsData _computeAnalytics(
     double netAfterCutoff = 0;
 
     for (final tx in savingsTxs) {
-      if (tx.createdAt.isBefore(cutoff)) continue;
-      if (tx.type == 'transfer_in' || tx.type == 'deposit' || tx.type == 'initial') {
-        netAfterCutoff += tx.amount;
-      } else if (tx.type == 'transfer_out' || tx.type == 'withdraw') {
-        netAfterCutoff -= tx.amount;
-      }
+      // A future-dated tx (the date picker allows it) already moved the live
+      // balance, so it belongs to "now", not to a month we are not charting.
+      final at = tx.createdAt.isAfter(now) ? now : tx.createdAt;
+      if (at.isBefore(cutoff)) continue;
+      netAfterCutoff += _savingsDelta(tx);
     }
 
     savingsHistory.add(currentSavings - netAfterCutoff);
@@ -380,13 +387,7 @@ AnalyticsData _computeAnalytics(
   double runningBal = savingsHistory[4];
   final currentMonthTimeline = <double>[];
   for (final tx in currentMonthTxs) {
-    if (tx.type == 'transfer_in' ||
-        tx.type == 'deposit' ||
-        tx.type == 'initial') {
-      runningBal += tx.amount;
-    } else if (tx.type == 'transfer_out' || tx.type == 'withdraw') {
-      runningBal -= tx.amount;
-    }
+    runningBal += _savingsDelta(tx);
     currentMonthTimeline.add(runningBal);
   }
 
@@ -396,3 +397,12 @@ AnalyticsData _computeAnalytics(
     currentMonthTimeline: currentMonthTimeline,
   );
 }
+
+/// Signed effect of a savings-account transaction on its available balance.
+/// Lending ('debt_out') and getting it back ('debt_repaid') move the balance
+/// just like a withdraw/deposit; anything else (e.g. salary) does not.
+double _savingsDelta(TransactionModel tx) => switch (tx.type) {
+      'transfer_in' || 'deposit' || 'initial' || 'debt_repaid' => tx.amount,
+      'transfer_out' || 'withdraw' || 'debt_out' => -tx.amount,
+      _ => 0,
+    };

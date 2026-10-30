@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/shared/overlays/transfer_success_overlay.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
@@ -88,13 +89,8 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       const _Acc(kWalletId, AppStrings.wallet, Icons.account_balance_wallet_rounded),
       const _Acc(kSavingsId, AppStrings.savings, Icons.savings_rounded),
       const _Acc(kBudgetId, AppStrings.monthlyBudget, Icons.receipt_long_rounded),
-      ...accounts.where((a) => a.isCustom).map((a) => _Acc(
-            a.id,
-            a.displayName,
-            a.iconCode != null
-                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
-                : Icons.savings_rounded,
-          )),
+      ...accounts.where((a) => a.isCustom).map(
+          (a) => _Acc(a.id, a.displayName, customAccountIcon(a.iconCode))),
     ];
   }
 
@@ -226,13 +222,8 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       const _Acc(kWalletId, AppStrings.wallet, Icons.account_balance_wallet_rounded),
       const _Acc(kSavingsId, AppStrings.savings, Icons.savings_rounded),
       const _Acc(kBudgetId, AppStrings.monthlyBudget, Icons.receipt_long_rounded),
-      ...allAccounts.where((a) => a.isCustom).map((a) => _Acc(
-            a.id,
-            a.displayName,
-            a.iconCode != null
-                ? IconData(a.iconCode!, fontFamily: 'MaterialIcons')
-                : Icons.savings_rounded,
-          )),
+      ...allAccounts.where((a) => a.isCustom).map(
+          (a) => _Acc(a.id, a.displayName, customAccountIcon(a.iconCode))),
     ];
 
     final fromAcc = accList.firstWhere((a) => a.id == _fromId);
