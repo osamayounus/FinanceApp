@@ -29,3 +29,59 @@ BillCat catFor(String name) =>
 /// Returns the display category name for [e], defaulting to 'Other' when unset.
 String displayCat(ExpenseModel e) =>
     e.category.isEmpty ? 'Other' : e.category;
+
+/// Sideways-scrolling category chips. Tapping the selected chip clears it
+/// ([selected] and the callback use '' for "no category").
+class CategoryPicker extends StatefulWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+  const CategoryPicker(
+      {super.key, required this.selected, required this.onChanged});
+
+  @override
+  State<CategoryPicker> createState() => _CategoryPickerState();
+}
+
+class _CategoryPickerState extends State<CategoryPicker> {
+  final _initialKey = GlobalKey();
+  late final String _initial = widget.selected;
+
+  @override
+  void initState() {
+    super.initState();
+    // A category chosen earlier (editing) can sit past the right edge: show it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chip = _initialKey.currentContext;
+      if (chip != null) Scrollable.ensureVisible(chip);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final c in kBillCats)
+            Padding(
+              key: c.name == _initial ? _initialKey : null,
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                avatar: Icon(c.icon, size: 18, color: c.color),
+                label: Text(c.name),
+                selected: selected == c.name,
+                showCheckmark: false,
+                onSelected: (on) => widget.onChanged(on ? c.name : ''),
+                selectedColor: c.color.withValues(alpha: 0.18),
+                backgroundColor: Colors.grey.withValues(alpha: 0.08),
+                side: BorderSide.none,
+                labelStyle: const TextStyle(
+                    fontFamily: 'Rubik', fontWeight: FontWeight.w600),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

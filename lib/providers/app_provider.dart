@@ -1,9 +1,16 @@
+import 'dart:math' show min, max;
+
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/analytics_model.dart';
+import 'package:financeapp/models/debt_model.dart';
 import 'package:financeapp/models/expense_model.dart';
+import 'package:financeapp/models/savings_goal_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/models/user_model.dart';
+import 'package:financeapp/modules/fixedExp/bill_categories.dart';
+import 'package:financeapp/modules/fixedExp/bill_due.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
+import 'package:financeapp/shared/services/bill_reminders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
@@ -26,9 +33,10 @@ class UserNotifier extends StateNotifier<UserModel> {
   final AppDatabase _db;
   UserNotifier(this._db, UserModel initial) : super(initial);
 
-  Future<void> update({String? name, double? salary, double? monthlyBudget}) async {
+  Future<void> update(
+      {String? name, double? salary, double? monthlyBudget, int? salaryDay}) async {
     state = state.copyWith(
-        name: name, salary: salary, monthlyBudget: monthlyBudget);
+        name: name, salary: salary, monthlyBudget: monthlyBudget, salaryDay: salaryDay);
     await _db.updateUser(state);
   }
 
@@ -58,12 +66,15 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
   /// Persists [updated] together with [tx] atomically, then publishes it.
   /// The DB is written before state changes so analyticsProvider reads the
   /// complete picture when it re-runs, and a failed write leaves both untouched.
-  Future<void> _apply(AccountModel updated, TransactionModel tx) async {
+  Future<void> _apply(AccountModel updated, TransactionModel tx,
+      {({String person, DateTime? due})? lend, int? repaysDebt}) async {
     await _db.applyTx(
       accountId: updated.id,
       balance: updated.balance,
       loanedAmount: updated.loanedAmount,
       tx: tx,
+      lend: lend,
+      repaysDebt: repaysDebt,
     );
     state = [
       for (final a in state)
@@ -80,9 +91,10 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
   Future<bool> updateTransaction(int id,
       {required double amount,
       required String title,
-      required String note}) async {
+      required String note,
+      String? category}) async {
     final ok = await _db.updateTransaction(id,
-        amount: amount, title: title, note: note);
+        amount: amount, title: title, note: note, category: category);
     if (ok) await reload();
     return ok;
   }
@@ -112,10 +124,12 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
     return true;
   }
 
-  /// Lends [amount] from [accountId] to a person.
+  /// Lends [amount] from [accountId] to [person], to be paid back by [due].
   /// Decreases available balance and increases loaned_amount.
   /// Returns false if [amount] is not positive or available balance is insufficient.
-  Future<bool> lendDebt(int accountId, double amount, TransactionModel tx) async {
+  /// Throws [ArgumentError] when [person] is blank.
+  Future<bool> lendDebt(int accountId, double amount, TransactionModel tx,
+      {required String person, DateTime? due}) async {
     if (!(amount > 0)) return false;
     final current = state.firstWhere((a) => a.id == accountId);
     if (current.balance < amount) return false;
@@ -125,26 +139,31 @@ class AccountsNotifier extends StateNotifier<List<AccountModel>> {
         loanedAmount: current.loanedAmount + amount,
       ),
       tx,
+      lend: (person: person, due: due),
     );
     return true;
   }
 
-  /// Records repayment of [amount] from an outstanding debt in [accountId].
+  /// Records repayment of [amount] on debt [debtId] of [accountId].
   /// Increases available balance and decreases loaned_amount. An [amount]
-  /// above the outstanding debt is capped, and the logged tx carries the
+  /// above what that debt still owes is capped, and the logged tx carries the
   /// capped amount so history matches the balances.
-  /// Returns false if [amount] is not positive or there is no outstanding debt.
-  Future<bool> repayDebt(int accountId, double amount, TransactionModel tx) async {
+  /// Returns false if [amount] is not positive or it is not an open debt of the account.
+  Future<bool> repayDebt(int accountId, double amount, TransactionModel tx,
+      {required int debtId}) async {
+    final debt = (await _db.getOpenDebts())
+        .where((d) => d.id == debtId && d.accountId == accountId)
+        .firstOrNull;
+    if (!(amount > 0) || debt == null) return false;
     final current = state.firstWhere((a) => a.id == accountId);
-    if (!(amount > 0) || current.loanedAmount <= 0) return false;
-    final actual =
-        amount > current.loanedAmount ? current.loanedAmount : amount;
+    final actual = min(amount, debt.remaining);
     await _apply(
       current.copyWith(
         balance: current.balance + actual,
-        loanedAmount: current.loanedAmount - actual,
+        loanedAmount: max(0.0, current.loanedAmount - actual),
       ),
       tx.withAmount(actual),
+      repaysDebt: debtId,
     );
     return true;
   }
@@ -283,19 +302,67 @@ final accountsProvider =
 
 class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
   final AppDatabase _db;
-  BillsNotifier(this._db, List<ExpenseModel> initial) : super(initial);
+  final BillReminders _reminders;
 
-  Future<void> add(String name, double amount, String category) async {
-    final id = await _db.insertBill(name, amount, category);
-    state = [...state, ExpenseModel(id: id, name: name, amount: amount, category: category)];
+  /// Called after [payDue] charged the Wallet, so the accounts re-read it.
+  final Future<void> Function() _onCharged;
+  BillsNotifier(this._db, List<ExpenseModel> initial,
+      {BillReminders reminders = const NoBillReminders(),
+      Future<void> Function()? onCharged})
+      : _reminders = reminders,
+        _onCharged = onCharged ?? (() async {}),
+        super(initial);
+
+  Future<void> add(String name, double amount, String category,
+      {int? dueDay, bool autoPay = false}) async {
+    final due = AppDatabase.validDay(dueDay);
+    final auto = autoPay && due != null;
+    final id = await _db.insertBill(name, amount, category, dueDay: due, autoPay: auto);
+    state = [
+      ...state,
+      ExpenseModel(
+          id: id,
+          name: name,
+          amount: amount,
+          category: category,
+          dueDay: due,
+          autoPay: auto),
+    ];
+    await syncReminders(ask: due != null);
   }
 
-  Future<void> edit(int index, String name, double amount, String category) async {
-    await _db.updateBill(state[index].id, name, amount, category);
+  Future<void> edit(int index, String name, double amount, String category,
+      {int? dueDay, bool autoPay = false}) async {
+    final due = AppDatabase.validDay(dueDay);
+    final auto = autoPay && due != null;
+    await _db.updateBill(state[index].id, name, amount, category,
+        dueDay: due, autoPay: auto);
     state = [
       for (int i = 0; i < state.length; i++)
-        if (i == index) state[i].copyWith(name: name, amount: amount, category: category) else state[i],
+        if (i == index)
+          ExpenseModel(
+              id: state[i].id,
+              name: name,
+              amount: amount,
+              isPaid: state[i].isPaid,
+              category: category,
+              dueDay: due,
+              autoPay: auto)
+        else
+          state[i],
     ];
+    await syncReminders(ask: due != null);
+  }
+
+  /// Pays every auto-pay bill whose due day has come out of the Wallet
+  /// ([AppDatabase.autoPayDueBills]); returns the bills it paid.
+  Future<List<ExpenseModel>> payDue([DateTime? now]) async {
+    final ids = await _db.autoPayDueBills(now ?? DateTime.now());
+    if (ids.isEmpty) return const [];
+    await _onCharged();
+    state = [for (final b in state) ids.contains(b.id) ? b.copyWith(isPaid: true) : b];
+    await syncReminders();
+    return [for (final b in state) if (ids.contains(b.id)) b];
   }
 
   Future<void> delete(int index) async {
@@ -304,6 +371,7 @@ class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
       for (int i = 0; i < state.length; i++)
         if (i != index) state[i],
     ];
+    await syncReminders();
   }
 
   Future<void> markPaid(int index) async {
@@ -312,16 +380,42 @@ class BillsNotifier extends StateNotifier<List<ExpenseModel>> {
       for (int i = 0; i < state.length; i++)
         if (i == index) state[i].copyWith(isPaid: true) else state[i],
     ];
+    await syncReminders();
   }
 
   Future<void> resetAll() async {
     await _db.resetAllBills();
     state = state.map((b) => b.copyWith(isPaid: false)).toList();
+    await syncReminders();
   }
 
   /// Re-reads the bills from disk (after a backup restore).
-  Future<void> reload() async => state = await _db.getBills();
+  Future<void> reload() async {
+    state = await _db.getBills();
+    await syncReminders();
+  }
+
+  /// Replaces the phone's pending reminders with the ones these bills need.
+  /// [ask]: the user just set a due day, so the OS may ask for its permissions.
+  Future<void> syncReminders({bool ask = false}) async {
+    final cycleStart = await _db.billCycleStart();
+    await _reminders.sync(pendingReminders(state, cycleStart, DateTime.now()), ask: ask);
+  }
 }
+
+/// When the current bill cycle began (the last salary day). Re-read whenever
+/// the bills change, which is what a new salary day does.
+final billCycleStartProvider = FutureProvider.autoDispose<DateTime>((ref) {
+  ref.watch(expensesProvider);
+  return ref.read(dbProvider).billCycleStart();
+});
+
+/// When salary day was last processed. Re-read after every balance change,
+/// which is what processing it does.
+final lastSalaryProvider = FutureProvider.autoDispose<DateTime?>((ref) {
+  ref.watch(accountsProvider);
+  return ref.read(dbProvider).lastSalaryProcessedAt();
+});
 
 // Keep the name 'expensesProvider' so FixedExpensesPage needs minimal changes.
 final expensesProvider =
@@ -348,6 +442,21 @@ final analyticsProvider = FutureProvider.autoDispose<AnalyticsData>((ref) async 
   return _computeAnalytics(allTxs, savingsTxs, currentSavings);
 });
 
+/// Monthly spending limit per category name. Invalidate it after changing one.
+final categoryBudgetsProvider = FutureProvider.autoDispose<Map<String, double>>(
+    (ref) => ref.read(dbProvider).getCategoryBudgets());
+
+/// Savings goals in creation order. Invalidate it after changing one.
+final savingsGoalsProvider = FutureProvider.autoDispose<List<SavingsGoal>>(
+    (ref) => ref.read(dbProvider).getSavingsGoals());
+
+/// Debts still owed, soonest due first. Reloads when an account moves (lending
+/// and receiving back); invalidate it after editing one.
+final debtsProvider = FutureProvider.autoDispose<List<Debt>>((ref) {
+  ref.watch(accountsProvider);
+  return ref.read(dbProvider).getOpenDebts();
+});
+
 /// Builds [AnalyticsData] from the raw transaction lists.
 ///
 /// Income   = salary + deposit (wallet + budget salary entries sum to full salary).
@@ -364,6 +473,7 @@ AnalyticsData _computeAnalytics(
   final now = DateTime.now();
   final months = <MonthStat>[];
 
+  final categorySpending = <String, double>{};
   for (int i = 5; i >= 0; i--) {
     final date = DateTime(now.year, now.month - i);
     double income = 0;
@@ -374,7 +484,13 @@ AnalyticsData _computeAnalytics(
         continue;
       }
       if (tx.type == 'salary' || tx.type == 'deposit') income += tx.amount;
-      if (tx.type == 'withdraw' || tx.type == 'bill_paid') expenses += tx.amount;
+      if (tx.type == 'withdraw' || tx.type == 'bill_paid') {
+        expenses += tx.amount;
+        if (i == 0) {
+          final cat = catFor(tx.category).name;
+          categorySpending[cat] = (categorySpending[cat] ?? 0) + tx.amount;
+        }
+      }
     }
 
     months.add(MonthStat(
@@ -435,6 +551,7 @@ AnalyticsData _computeAnalytics(
     savingsHistory: savingsHistory,
     currentMonthTimeline: currentMonthTimeline,
     savingsChangeThisMonth: savingsChangeThisMonth,
+    categorySpendingThisMonth: categorySpending,
   );
 }
 

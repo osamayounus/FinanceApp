@@ -5,8 +5,11 @@
 //   Step 2 – enter amount + optional title/note, then confirm
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/savings_goal_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/analytics/savings_goals.dart';
 import 'package:financeapp/modules/home/cards/customAccountCard.dart';
+import 'package:financeapp/modules/home/widgets/goal_picker.dart';
 import 'package:financeapp/shared/overlays/transfer_success_overlay.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
@@ -60,6 +63,9 @@ class _TransferPageState extends ConsumerState<TransferPage> {
   late int _fromId;
   late int _toId;
 
+  // Goal the Savings money goes into (to = Savings) or comes out of (from = Savings).
+  int? _goalId;
+
   final _amountCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
@@ -108,6 +114,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
     );
     if (picked == null || picked == currentId) return;
     setState(() {
+      _goalId = null;
       if (isFrom) {
         _fromId = picked;
         if (_toId == picked) {
@@ -123,6 +130,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
   }
 
   void _swap() => setState(() {
+        _goalId = null;
         final tmp = _fromId;
         _fromId = _toId;
         _toId = tmp;
@@ -191,13 +199,30 @@ class _TransferPageState extends ConsumerState<TransferPage> {
       relatedAccountId: _fromId,
       createdAt: now,
     );
-    ref.read(accountsProvider.notifier).transfer(
+    final moved = ref.read(accountsProvider.notifier).transfer(
           fromId: _fromId,
           toId: _toId,
           amount: amount,
           txOut: txOut,
           txIn: txIn,
         );
+
+    // Then fill (or empty) the chosen goal's envelope. Taken before the page can
+    // close: the container and db outlive this State.
+    final goal = _fromId != kSavingsId && _toId != kSavingsId || _goalId == null
+        ? null
+        : (ref.read(savingsGoalsProvider).valueOrNull ?? const <SavingsGoal>[])
+            .where((g) => g.id == _goalId)
+            .firstOrNull;
+    if (goal == null) return;
+    final into = _toId == kSavingsId;
+    final share = goalShare(goal, amount, deposit: into);
+    final db = ref.read(dbProvider);
+    final container = ProviderScope.containerOf(context);
+    if (share > 0 && await moved) {
+      await db.addToGoal(goal.id, into ? share : -share);
+      container.invalidate(savingsGoalsProvider);
+    }
   }
 
   @override
@@ -230,6 +255,7 @@ class _TransferPageState extends ConsumerState<TransferPage> {
     final toAcc = accList.firstWhere((a) => a.id == _toId);
     final fromBalance =
         allAccounts.firstWhere((a) => a.id == _fromId).balance;
+    final goals = ref.watch(savingsGoalsProvider).valueOrNull ?? const <SavingsGoal>[];
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -428,6 +454,21 @@ class _TransferPageState extends ConsumerState<TransferPage> {
                     horizontal: AppSizes.m, vertical: AppSizes.s),
                 child: Column(
                   children: [
+                    if ((_fromId == kSavingsId || _toId == kSavingsId) &&
+                        goals.isNotEmpty) ...[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: GoalPicker(
+                          goals: goals,
+                          selected: _goalId,
+                          label: _toId == kSavingsId
+                              ? 'Put into a goal (optional)'
+                              : 'Take from a goal (optional)',
+                          onChanged: (id) => setState(() => _goalId = id),
+                        ),
+                      ),
+                      SizedBox(height: AppSizes.s),
+                    ],
                     _DetailField(
                       controller: _titleCtrl,
                       label: AppStrings.titleOptional,

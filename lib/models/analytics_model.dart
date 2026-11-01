@@ -46,11 +46,16 @@ class AnalyticsData {
   /// transfers, debts), excluding the starting balance entered at onboarding.
   final double savingsChangeThisMonth;
 
+  /// This month's `withdraw` + `bill_paid` spending per category name
+  /// (uncategorised and unknown names count as 'Other').
+  final Map<String, double> categorySpendingThisMonth;
+
   const AnalyticsData({
     required this.months,
     required this.savingsHistory,
     required this.currentMonthTimeline,
     this.savingsChangeThisMonth = 0,
+    this.categorySpendingThisMonth = const {},
   });
 
   /// Convenience accessor for the current (latest) month stats.

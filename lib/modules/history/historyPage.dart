@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/fixedExp/bill_categories.dart';
 import 'package:financeapp/modules/history/history_filter.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
@@ -290,6 +291,8 @@ class _HistorypageState extends ConsumerState<Historypage> {
             if (subtitle != null)
               _detailRow(Icons.compare_arrows_rounded, 'Account',
                   subtitle),
+            if (tx.category.isNotEmpty)
+              _detailRow(Icons.category_rounded, 'Category', tx.category),
             if (note != null)
               _detailRow(Icons.notes_rounded, 'Note', note),
 
@@ -649,7 +652,8 @@ class _HistorypageState extends ConsumerState<Historypage> {
         tx.id,
         amount: edited.amount,
         title: edited.title,
-        note: edited.note);
+        note: edited.note,
+        category: edited.category);
     if (!mounted) return;
     if (ok) {
       AppToast.success(messenger, 'Transaction updated');
@@ -794,7 +798,7 @@ class _Item {
 
 // ── Edit sheet ────────────────────────────────────────────────────────────────
 
-typedef _TxEdit = ({double amount, String title, String note});
+typedef _TxEdit = ({double amount, String title, String note, String category});
 
 class _EditTxSheet extends StatefulWidget {
   final TransactionModel tx;
@@ -810,6 +814,7 @@ class _EditTxSheetState extends State<_EditTxSheet> {
       TextEditingController(text: plainAmt(widget.tx.amount));
   late final _title = TextEditingController(text: widget.tx.title);
   late final _note = TextEditingController(text: widget.tx.note);
+  late String _category = widget.tx.category;
   String? _error;
 
   @override
@@ -836,6 +841,7 @@ class _EditTxSheetState extends State<_EditTxSheet> {
               ? AppStrings.deposit
               : AppStrings.withdraw),
       note: _note.text.trim(),
+      category: _category,
     ));
   }
 
@@ -910,6 +916,12 @@ class _EditTxSheetState extends State<_EditTxSheet> {
               _field(_title, AppStrings.titleOptional),
               SizedBox(height: AppSizes.s),
               _field(_note, AppStrings.noteOptional),
+              if (widget.tx.type == 'withdraw') ...[
+                SizedBox(height: AppSizes.s),
+                CategoryPicker(
+                    selected: _category,
+                    onChanged: (c) => setState(() => _category = c)),
+              ],
               SizedBox(height: AppSizes.l),
               Row(
                 children: [

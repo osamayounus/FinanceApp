@@ -1,7 +1,8 @@
 // ── HomePage ──────────────────────────────────────────────────────────────────
 // Main wallet dashboard shown on the centre tab. Contains a horizontal card
 // swiper (Wallet, Savings, Budget, custom accounts), an "Add Account" button,
-// Operation and Transfer quick-action buttons, and a "How does this work?" sheet.
+// the savings goals under them, Operation and Transfer quick-action buttons, and
+// a "How does this work?" sheet.
 // Also triggers the first-run tutorial overlay via AppConfig.isFirstRun.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:card_swiper/card_swiper.dart';
@@ -9,6 +10,7 @@ import 'package:financeapp/modules/home/cards/customAccountCard.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
 import 'package:financeapp/modules/home/cards/incomeCard.dart';
 import 'package:financeapp/modules/home/sheets/add_account_sheet.dart';
+import 'package:financeapp/modules/home/widgets/goals_strip.dart';
 import 'package:financeapp/modules/home/cards/monthlyExpCard.dart';
 import 'package:financeapp/modules/home/cards/savingCard.dart';
 import 'package:financeapp/modules/operation/operationPage.dart';
@@ -434,118 +436,130 @@ class _HomepageState extends ConsumerState<Homepage> {
             ),
 
             // ── Cards swiper + buttons row ───────────────────────────
+            // Scrolls only when the cards + goals do not fit (small screens).
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // "+" and "?" buttons row
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: screenWidth * 0.1,
-                      right: screenWidth * 0.1,
-                      bottom: AppSizes.s,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: LayoutBuilder(
+                builder: (context, box) => SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: box.maxHeight),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // "+" add account button (left)
-                        GestureDetector(
-                          key: _addAccountKey,
-                          onTap: () => _showAddAccountSheet(context),
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.secondary
-                                  .withValues(alpha: 0.08),
-                              border: Border.all(
-                                  color: AppColors.secondary
-                                      .withValues(alpha: 0.18),
-                                  width: 1),
-                            ),
-                            child: Icon(Icons.add_rounded,
-                                size: 16,
-                                color: AppColors.secondary
-                                    .withValues(alpha: 0.55)),
+                        // "+" and "?" buttons row
+                        Padding(
+                          padding: EdgeInsets.only(
+                            left: screenWidth * 0.1,
+                            right: screenWidth * 0.1,
+                            bottom: AppSizes.s,
                           ),
-                        ),
-                        // "?" how it works button (right)
-                        GestureDetector(
-                          onTap: () => _showHowItWorksSheet(context),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: AppSizes.s + 2,
-                                vertical: AppSizes.xs + 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondary
-                                  .withValues(alpha: 0.07),
-                              borderRadius:
-                                  BorderRadius.circular(AppSizes.radiusXXL),
-                              border: Border.all(
-                                color: AppColors.secondary
-                                    .withValues(alpha: 0.15),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.lightbulb_outline_rounded,
-                                  size: 13,
-                                  color: AppColors.secondary
-                                      .withValues(alpha: 0.55),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  AppStrings.howItWorks,
-                                  style: TextStyle(
-                                    fontFamily: 'Rubik',
-                                    fontSize: AppSizes.fontXS,
-                                    fontWeight: FontWeight.w500,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // "+" add account button (left)
+                              GestureDetector(
+                                key: _addAccountKey,
+                                onTap: () => _showAddAccountSheet(context),
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
                                     color: AppColors.secondary
-                                        .withValues(alpha: 0.55),
+                                        .withValues(alpha: 0.08),
+                                    border: Border.all(
+                                        color: AppColors.secondary
+                                            .withValues(alpha: 0.18),
+                                        width: 1),
+                                  ),
+                                  child: Icon(Icons.add_rounded,
+                                      size: 16,
+                                      color: AppColors.secondary
+                                          .withValues(alpha: 0.55)),
+                                ),
+                              ),
+                              // "?" how it works button (right)
+                              GestureDetector(
+                                onTap: () => _showHowItWorksSheet(context),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: AppSizes.s + 2,
+                                      vertical: AppSizes.xs + 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary
+                                        .withValues(alpha: 0.07),
+                                    borderRadius:
+                                        BorderRadius.circular(AppSizes.radiusXXL),
+                                    border: Border.all(
+                                      color: AppColors.secondary
+                                          .withValues(alpha: 0.15),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.lightbulb_outline_rounded,
+                                        size: 13,
+                                        color: AppColors.secondary
+                                            .withValues(alpha: 0.55),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        AppStrings.howItWorks,
+                                        style: TextStyle(
+                                          fontFamily: 'Rubik',
+                                          fontSize: AppSizes.fontXS,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.secondary
+                                              .withValues(alpha: 0.55),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
 
-                  // Swiper
-                  SizedBox(
-                    height: screenHeight * 0.28,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Swiper(
-                          controller: _swiperController,
-                          itemBuilder: (BuildContext context, int index) =>
-                              cards[index],
-                          itemCount: cards.length,
-                          itemWidth: screenWidth * 0.8,
-                          itemHeight: screenHeight * 0.28,
-                          layout: SwiperLayout.STACK,
-                          axisDirection: AxisDirection.right,
-                        ),
-                        // Invisible widget — same size as one card — used only
-                        // for spotlight measurement. Taps pass through to Swiper.
-                        IgnorePointer(
-                          child: SizedBox(
-                            key: _cardsKey,
-                            width: screenWidth * 0.8,
-                            height: screenHeight * 0.28,
+                        // Swiper
+                        SizedBox(
+                          height: screenHeight * 0.28,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Swiper(
+                                controller: _swiperController,
+                                itemBuilder: (BuildContext context, int index) =>
+                                    cards[index],
+                                itemCount: cards.length,
+                                itemWidth: screenWidth * 0.8,
+                                itemHeight: screenHeight * 0.28,
+                                layout: SwiperLayout.STACK,
+                                axisDirection: AxisDirection.right,
+                              ),
+                              // Invisible widget — same size as one card — used only
+                              // for spotlight measurement. Taps pass through to Swiper.
+                              IgnorePointer(
+                                child: SizedBox(
+                                  key: _cardsKey,
+                                  width: screenWidth * 0.8,
+                                  height: screenHeight * 0.28,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+
+                        // ── Savings goals ────────────────────────────────────
+                        SizedBox(height: AppSizes.m),
+                        const GoalsStrip(),
                       ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
 

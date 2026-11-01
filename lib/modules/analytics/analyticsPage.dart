@@ -5,9 +5,11 @@
 //
 // Page structure (top → bottom):
 //   SmartInsightsCard      — rule-based actionable observations
-//   MonthlySnapshotCard    — income, spending & budget bar for current month
+//   DebtsCard              — who owes you money (only when someone does)
+//   MonthlySnapshotCard   — income, spending & budget bar for current month
 //   [SPENDING OVERVIEW]
 //   SpendingChartCard      — grouped bar chart: Income vs Spent, 6 months
+//   CategoryBudgetCard     — this month's spending per category + limits
 //   [BILLS BREAKDOWN]
 //   CategoryChartCard      — donut chart of bills by category
 //   [SAVINGS GROWTH]
@@ -15,6 +17,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/debt_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
@@ -23,8 +26,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // ── Widget imports ────────────────────────────────────────────────────────────
 import 'widgets/smart_insights_card.dart';
+import 'widgets/debts_card.dart';
 import 'widgets/monthly_snapshot_card.dart';
 import 'widgets/spending_chart_card.dart';
+import 'widgets/category_budget_card.dart';
 import 'widgets/category_chart_card.dart';
 import 'widgets/savings_chart_card.dart';
 
@@ -45,6 +50,9 @@ class AnalyticsPage extends ConsumerWidget {
         .firstWhere((a) => a.id == kBudgetId)
         .balance;
     final bills = ref.watch(expensesProvider);
+    final budgets = ref.watch(categoryBudgetsProvider).valueOrNull ?? const {};
+    final debts = ref.watch(debtsProvider).valueOrNull ?? const <Debt>[];
+    final accounts = ref.watch(accountsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.pageBackground,
@@ -100,8 +108,26 @@ class AnalyticsPage extends ConsumerWidget {
                       monthlyBudget: user.monthlyBudget,
                       bills: bills,
                       currency: currency,
+                      categoryBudgets: budgets,
                     ),
                     SizedBox(height: AppSizes.m),
+
+                    // ── Who owes you money (only when someone does) ───
+                    if (debts.isNotEmpty) ...[
+                      DebtsCard(
+                        debts: debts,
+                        accountNames: {for (final a in accounts) a.id: a.displayName},
+                        currency: currency,
+                        now: DateTime.now(),
+                        onSave: (debt, person, due) async {
+                          await ref
+                              .read(dbProvider)
+                              .updateDebt(debt.id, person: person, dueDate: due);
+                          ref.invalidate(debtsProvider);
+                        },
+                      ),
+                      SizedBox(height: AppSizes.m),
+                    ],
 
                     // ── Step 1: Monthly Snapshot ──────────────────────
                     MonthlySnapshotCard(
@@ -116,11 +142,25 @@ class AnalyticsPage extends ConsumerWidget {
                     SpendingChartCard(data: data, currency: currency),
                     SizedBox(height: AppSizes.m),
 
-                    // ── Step 3: Category donut chart ──────────────────
+                    // ── Step 3: Spending per category + limits ────────
+                    CategoryBudgetCard(
+                      spending: data.categorySpendingThisMonth,
+                      budgets: budgets,
+                      currency: currency,
+                      onSetLimit: (category, amount) async {
+                        await ref
+                            .read(dbProvider)
+                            .setCategoryBudget(category, amount);
+                        ref.invalidate(categoryBudgetsProvider);
+                      },
+                    ),
+                    SizedBox(height: AppSizes.m),
+
+                    // ── Step 4: Bills donut chart ─────────────────────
                     CategoryChartCard(bills: bills, currency: currency),
                     SizedBox(height: AppSizes.m),
 
-                    // ── Step 4: Savings account growth line chart ─────
+                    // ── Step 5: Savings account growth line chart ─────
                     SavingsChartCard(data: data, currency: currency),
                     SizedBox(height: AppSizes.m),
                   ],

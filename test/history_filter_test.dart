@@ -4,7 +4,11 @@ import 'package:flutter/material.dart' show DateTimeRange;
 import 'package:flutter_test/flutter_test.dart';
 
 TransactionModel tx(String type, double amount,
-        {String title = '', String note = '', DateTime? at, int id = 0}) =>
+        {String title = '',
+        String note = '',
+        String category = '',
+        DateTime? at,
+        int id = 0}) =>
     TransactionModel(
       id: id,
       accountId: 1,
@@ -12,6 +16,7 @@ TransactionModel tx(String type, double amount,
       amount: amount,
       title: title,
       note: note,
+      category: category,
       createdAt: at ?? DateTime(2025, 6, 15, 12),
     );
 
@@ -79,6 +84,15 @@ void main() {
 
       test('matches the note', () {
         expect(ids(const HistoryFilter(query: 'invoice')), [1]);
+      });
+
+      test('matches the category, ignoring case, even when the title says otherwise', () {
+        final list = [
+          tx('withdraw', 5, title: 'Lunch', category: 'Food', id: 1),
+          tx('withdraw', 6, title: 'Bus', id: 2),
+        ];
+        expect(const HistoryFilter(query: 'fOO').apply(list).map((t) => t.id), [1]);
+        expect(const HistoryFilter(query: 'transport').apply(list), isEmpty);
       });
 
       test('matches part of a title', () {

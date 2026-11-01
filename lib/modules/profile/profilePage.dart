@@ -14,6 +14,7 @@ import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
+import 'package:financeapp/shared/services/app_lock.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
@@ -51,6 +52,21 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
     }
     ref.read(userProvider.notifier).update(salary: salary, monthlyBudget: budget);
     return null;
+  }
+
+  /// Saves the day of the month the salary arrives; returns an error message instead when invalid.
+  String? _saveSalaryDay(String val) {
+    final day = int.tryParse(val);
+    if (day == null || day < 1 || day > 31) return AppStrings.enterValidDay;
+    ref.read(userProvider.notifier).update(salaryDay: day);
+    return null;
+  }
+
+  Future<void> _toggleLock() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final lock = AppLock.instance;
+    final error = await lock.setEnabled(!lock.enabled.value);
+    if (error != null) AppToast.error(messenger, error);
   }
 
   Future<void> _confirmReset() async {
@@ -206,6 +222,8 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
         ref.read(accountsProvider.notifier).reload(),
         ref.read(expensesProvider.notifier).reload(),
       ]);
+      ref.invalidate(categoryBudgetsProvider);
+      ref.invalidate(savingsGoalsProvider);
       AppToast.success(messenger, 'Backup restored');
     } finally {
       if (mounted) setState(() => _backupBusy = false);
@@ -439,6 +457,23 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                     ),
                     _divider(),
                     _InfoRow(
+                      icon: Icons.event_rounded,
+                      iconColor: AppColors.blueIcon,
+                      iconBg: AppColors.blueIconBg,
+                      label: AppStrings.salaryDay,
+                      value: 'Day ${user.salaryDay}',
+                      onTap: () => _showEditSheet(
+                        context: context,
+                        ref: ref,
+                        title: AppStrings.editSalaryDay,
+                        initialValue: '${user.salaryDay}',
+                        isNumber: true,
+                        suffix: 'of each month',
+                        onSave: _saveSalaryDay,
+                      ),
+                    ),
+                    _divider(),
+                    _InfoRow(
                       icon: Icons.receipt_long_rounded,
                       iconColor: AppColors.myRed,
                       iconBg: AppColors.myRed.withValues(alpha: 0.1),
@@ -528,6 +563,39 @@ class _ProfilepageState extends ConsumerState<Profilepage> {
                         ],
                       ),
                     ),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppSizes.l),
+
+              // ── Security ─────────────────────────────────────────
+              Padding(
+                padding: EdgeInsets.only(bottom: AppSizes.s),
+                child: SectionLabel(AppStrings.sectionSecurity),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 12,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: AppLock.instance.enabled,
+                  builder: (_, on, __) => _InfoRow(
+                    icon: Icons.lock_rounded,
+                    iconColor: AppColors.blueIcon,
+                    iconBg: AppColors.blueIconBg,
+                    label: AppStrings.appLock,
+                    value: on ? 'On' : 'Off',
+                    isFirst: true,
+                    isLast: true,
+                    onTap: _toggleLock,
                   ),
                 ),
               ),

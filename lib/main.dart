@@ -17,6 +17,9 @@ import 'package:financeapp/modules/profile/profile_picker_page.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/networks/local/profile_manager.dart';
+import 'package:financeapp/shared/overlays/app_lock_gate.dart';
+import 'package:financeapp/shared/services/app_lock.dart';
+import 'package:financeapp/shared/services/bill_reminders.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +55,8 @@ class AppConfig {
 /// Holds the bootstrapped app state. Updating this value triggers a full
 /// ProviderScope rebuild via [ValueListenableBuilder] in [AppRoot].
 final appConfigNotifier = ValueNotifier<AppConfig?>(null);
+
+final _reminders = LocalBillReminders();
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -100,6 +105,7 @@ void main() async {
     }
   }
 
+  await AppLock.instance.load(); // before the first frame, so the app never shows unlocked
   runApp(const AppRoot());
 }
 
@@ -110,7 +116,9 @@ class AppRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppConfig?>(
+    // The gate stays above the profile-keyed ProviderScope, so switching profile does not lock.
+    return AppLockGate(
+        child: ValueListenableBuilder<AppConfig?>(
       valueListenable: appConfigNotifier,
       builder: (context, config, _) {
         if (config == null) {
@@ -133,8 +141,11 @@ class AppRoot extends StatelessWidget {
                 (ref) => UserNotifier(config.db!, config.user!)),
             accountsProvider.overrideWith(
                 (ref) => AccountsNotifier(config.db!, config.accounts)),
-            expensesProvider.overrideWith(
-                (ref) => BillsNotifier(config.db!, config.bills)),
+            expensesProvider.overrideWith((ref) => BillsNotifier(
+                config.db!, config.bills,
+                reminders: _reminders,
+                onCharged: () => ref.read(accountsProvider.notifier).reload())
+              ..syncReminders()),
           ]);
         }
 
@@ -164,7 +175,7 @@ class AppRoot extends StatelessWidget {
           ),
         );
       },
-    );
+    ));
   }
 }
 

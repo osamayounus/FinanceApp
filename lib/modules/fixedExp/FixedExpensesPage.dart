@@ -8,9 +8,11 @@ import 'package:financeapp/models/account_model.dart';
 import 'package:financeapp/models/expense_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/modules/fixedExp/bill_categories.dart';
+import 'package:financeapp/modules/fixedExp/bill_due.dart';
 import 'package:financeapp/modules/fixedExp/widgets/expense_card.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/styles/strings.dart';
@@ -32,6 +34,7 @@ class Fixedexpensespage extends ConsumerStatefulWidget {
 class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   final _nameCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
+  final _dueCtrl = TextEditingController();
 
   String? _categoryFilter; // null = All
   VoidCallback? _closeOpenCard;
@@ -50,6 +53,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     _tutorialEntry?.remove();
     _nameCtrl.dispose();
     _amountCtrl.dispose();
+    _dueCtrl.dispose();
     super.dispose();
   }
 
@@ -91,11 +95,14 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     if (item != null) {
       _nameCtrl.text = item.name;
       _amountCtrl.text = plainAmt(item.amount);
+      _dueCtrl.text = item.dueDay?.toString() ?? '';
     } else {
       _nameCtrl.clear();
       _amountCtrl.clear();
+      _dueCtrl.clear();
     }
     String sheetCat = item?.category ?? '';
+    bool sheetAuto = item?.autoPay ?? false;
     String sheetError = '';
 
     showModalBottomSheet(
@@ -120,177 +127,259 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
               AppSizes.l,
               AppSizes.l,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const ModalHandle(),
-                SizedBox(height: AppSizes.l),
+            // Scrolls when the keyboard leaves too little room for all fields.
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const ModalHandle(),
+                  SizedBox(height: AppSizes.l),
 
-                // Title
-                Text(
-                  item == null
-                      ? AppStrings.addBillTitle
-                      : AppStrings.editBillTitle,
-                  style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: AppSizes.fontXXL,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                  // Title
+                  Text(
+                    item == null
+                        ? AppStrings.addBillTitle
+                        : AppStrings.editBillTitle,
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontXXL,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
-                ),
-                SizedBox(height: AppSizes.l),
+                  SizedBox(height: AppSizes.l),
 
-                // Bill name
-                _field(_nameCtrl, AppStrings.billName),
-                SizedBox(height: AppSizes.m),
+                  // Bill name
+                  _field(_nameCtrl, AppStrings.billName),
+                  SizedBox(height: AppSizes.m),
 
-                // Amount
-                _field(
-                  _amountCtrl,
-                  'Amount (${ref.read(currencyProvider)})',
-                  isNumber: true,
-                ),
-                SizedBox(height: AppSizes.l),
-
-                // Category label
-                Text(
-                  AppStrings.sectionCategory,
-                  style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: AppSizes.fontXS,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.1,
-                    color: Colors.grey[400],
+                  // Amount
+                  _field(
+                    _amountCtrl,
+                    'Amount (${ref.read(currencyProvider)})',
+                    isNumber: true,
                   ),
-                ),
-                SizedBox(height: AppSizes.s),
+                  SizedBox(height: AppSizes.m),
 
-                // Category chips grid
-                Wrap(
-                  spacing: AppSizes.s,
-                  runSpacing: AppSizes.s,
-                  children: kBillCats.map((cat) {
-                    final sel =
-                        sheetCat == cat.name ||
-                        (sheetCat.isEmpty && cat.name == 'Other');
-                    return GestureDetector(
-                      onTap: () => setSheetState(
-                        () => sheetCat = cat.name == 'Other' ? '' : cat.name,
-                      ),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSizes.m,
-                          vertical: AppSizes.s,
-                        ),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? cat.color.withValues(alpha: 0.12)
-                              : AppColors.pageBackground,
-                          borderRadius: BorderRadius.circular(AppSizes.radiusL),
-                          border: Border.all(
-                            color: sel ? cat.color : Colors.transparent,
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              cat.icon,
-                              color: sel ? cat.color : Colors.grey[400],
-                              size: AppSizes.iconS,
-                            ),
-                            SizedBox(width: AppSizes.xs + 2),
-                            Text(
-                              cat.name,
-                              style: TextStyle(
-                                fontFamily: 'Rubik',
-                                fontSize: AppSizes.fontXS,
-                                fontWeight: FontWeight.w600,
-                                color: sel ? cat.color : Colors.grey[400],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                  // Due day (optional)
+                  _field(_dueCtrl, AppStrings.billDueDay, isDay: true),
+                  SizedBox(height: AppSizes.m),
 
-                if (sheetError.isNotEmpty) ...[
-                  SizedBox(height: AppSizes.s),
+                  // Charge the Wallet by itself on the due day
                   Container(
-                    width: double.infinity,
                     padding: EdgeInsets.symmetric(
-                      vertical: AppSizes.s,
                       horizontal: AppSizes.m,
+                      vertical: AppSizes.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.myRed.withValues(alpha: 0.08),
+                      color: AppColors.pageBackground,
                       borderRadius: BorderRadius.circular(AppSizes.radiusL),
-                      border: Border.all(
-                        color: AppColors.myRed.withValues(alpha: 0.25),
-                      ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.error_outline_rounded,
-                          color: AppColors.myRed,
-                          size: AppSizes.iconS,
+                          Icons.autorenew_rounded,
+                          color: Colors.grey[400],
+                          size: AppSizes.iconM,
                         ),
-                        SizedBox(width: AppSizes.xs),
-                        Text(
-                          sheetError,
-                          style: TextStyle(
-                            fontFamily: 'Rubik',
-                            fontSize: AppSizes.fontXS,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.myRed,
+                        SizedBox(width: AppSizes.m),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                AppStrings.autoPay,
+                                style: TextStyle(
+                                  fontFamily: 'Rubik',
+                                  fontSize: AppSizes.fontM,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              Text(
+                                AppStrings.autoPayHint,
+                                style: TextStyle(
+                                  fontFamily: 'Rubik',
+                                  fontSize: AppSizes.fontXS,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        Switch(
+                          value: sheetAuto,
+                          activeTrackColor: AppColors.myGreen,
+                          onChanged: (v) => setSheetState(() => sheetAuto = v),
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(height: AppSizes.m),
-                ],
+                  SizedBox(height: AppSizes.l),
 
-                // Buttons
-                Row(
-                  children: [
-                    Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
-                    SizedBox(width: AppSizes.s + 4),
-                    Expanded(
-                      child: _primaryBtn(item == null ? 'Add' : 'Save', () {
-                        final name = _nameCtrl.text.trim();
-                        final amount =
-                            double.tryParse(_amountCtrl.text.trim()) ?? 0;
-                        if (name.isEmpty || amount <= 0) {
-                          setSheetState(
-                            () => sheetError = amount <= 0
-                                ? AppStrings.enterValidAmount
-                                : 'Please enter a bill name',
-                          );
-                          return;
-                        }
-                        if (item == null) {
-                          ref
-                              .read(expensesProvider.notifier)
-                              .add(name, amount, sheetCat);
-                        } else {
-                          ref
-                              .read(expensesProvider.notifier)
-                              .edit(index!, name, amount, sheetCat);
-                        }
-                        Navigator.pop(ctx);
-                      }),
+                  // Category label
+                  Text(
+                    AppStrings.sectionCategory,
+                    style: TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: AppSizes.fontXS,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: Colors.grey[400],
                     ),
+                  ),
+                  SizedBox(height: AppSizes.s),
+
+                  // Category chips grid
+                  Wrap(
+                    spacing: AppSizes.s,
+                    runSpacing: AppSizes.s,
+                    children: kBillCats.map((cat) {
+                      final sel =
+                          sheetCat == cat.name ||
+                          (sheetCat.isEmpty && cat.name == 'Other');
+                      return GestureDetector(
+                        onTap: () => setSheetState(
+                          () => sheetCat = cat.name == 'Other' ? '' : cat.name,
+                        ),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSizes.m,
+                            vertical: AppSizes.s,
+                          ),
+                          decoration: BoxDecoration(
+                            color: sel
+                                ? cat.color.withValues(alpha: 0.12)
+                                : AppColors.pageBackground,
+                            borderRadius: BorderRadius.circular(
+                              AppSizes.radiusL,
+                            ),
+                            border: Border.all(
+                              color: sel ? cat.color : Colors.transparent,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                cat.icon,
+                                color: sel ? cat.color : Colors.grey[400],
+                                size: AppSizes.iconS,
+                              ),
+                              SizedBox(width: AppSizes.xs + 2),
+                              Text(
+                                cat.name,
+                                style: TextStyle(
+                                  fontFamily: 'Rubik',
+                                  fontSize: AppSizes.fontXS,
+                                  fontWeight: FontWeight.w600,
+                                  color: sel ? cat.color : Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+
+                  if (sheetError.isNotEmpty) ...[
+                    SizedBox(height: AppSizes.s),
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppSizes.s,
+                        horizontal: AppSizes.m,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.myRed.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusL),
+                        border: Border.all(
+                          color: AppColors.myRed.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline_rounded,
+                            color: AppColors.myRed,
+                            size: AppSizes.iconS,
+                          ),
+                          SizedBox(width: AppSizes.xs),
+                          Text(
+                            sheetError,
+                            style: TextStyle(
+                              fontFamily: 'Rubik',
+                              fontSize: AppSizes.fontXS,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.myRed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: AppSizes.m),
                   ],
-                ),
-              ],
+
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(child: _cancelBtn(() => Navigator.pop(ctx))),
+                      SizedBox(width: AppSizes.s + 4),
+                      Expanded(
+                        child: _primaryBtn(item == null ? 'Add' : 'Save', () async {
+                          final name = _nameCtrl.text.trim();
+                          final amount =
+                              double.tryParse(_amountCtrl.text.trim()) ?? 0;
+                          final dueText = _dueCtrl.text.trim();
+                          final dueDay = int.tryParse(dueText);
+                          if (name.isEmpty || amount <= 0) {
+                            setSheetState(
+                              () => sheetError = amount <= 0
+                                  ? AppStrings.enterValidAmount
+                                  : 'Please enter a bill name',
+                            );
+                            return;
+                          }
+                          if (dueText.isNotEmpty &&
+                              AppDatabase.validDay(dueDay) == null) {
+                            setSheetState(
+                              () => sheetError = AppStrings.invalidDueDay,
+                            );
+                            return;
+                          }
+                          if (sheetAuto && dueDay == null) {
+                            setSheetState(
+                              () => sheetError = AppStrings.autoPayNeedsDueDay,
+                            );
+                            return;
+                          }
+                          final messenger = ScaffoldMessenger.of(context);
+                          final bills = ref.read(expensesProvider.notifier);
+                          Navigator.pop(ctx);
+                          if (item == null) {
+                            await bills.add(name, amount, sheetCat,
+                                dueDay: dueDay, autoPay: sheetAuto);
+                          } else {
+                            await bills.edit(index!, name, amount, sheetCat,
+                                dueDay: dueDay, autoPay: sheetAuto);
+                          }
+                          // A due day that has already passed is charged now, not at the next app start.
+                          if (!sheetAuto) return;
+                          final paid = await bills.payDue();
+                          if (paid.isNotEmpty && mounted) {
+                            AppToast.success(messenger,
+                                autoPaidText(paid, ref.read(currencyProvider)));
+                          }
+                        }),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -364,6 +453,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                       amount: bill.amount,
                       title: bill.name,
                       note: AppStrings.monthlyBill,
+                      category: bills[realIndex].category,
                       createdAt: DateTime.now(),
                     );
                     final success = await ref
@@ -462,6 +552,7 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
     TextEditingController ctrl,
     String label, {
     bool isNumber = false,
+    bool isDay = false,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -472,8 +563,15 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
         controller: ctrl,
         keyboardType: isNumber
             ? const TextInputType.numberWithOptions(decimal: true)
+            : isDay
+            ? TextInputType.number
             : TextInputType.text,
-        inputFormatters: isNumber
+        inputFormatters: isDay
+            ? [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(2),
+              ]
+            : isNumber
             ? [
                 TextInputFormatter.withFunction((oldValue, newValue) {
                   final text = newValue.text;
@@ -562,6 +660,8 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
   Widget build(BuildContext context) {
     final expenses = ref.watch(expensesProvider);
     final currency = ref.watch(currencyProvider);
+    final cycleStart = ref.watch(billCycleStartProvider).asData?.value;
+    final now = DateTime.now();
 
     // Collect used categories in predefined order
     final usedCatNames = kBillCats
@@ -762,6 +862,9 @@ class _FixedexpensespageState extends ConsumerState<Fixedexpensespage> {
                               child: SlidableExpenseCard(
                                 item: item,
                                 currency: currency,
+                                due: cycleStart == null
+                                    ? null
+                                    : dueLabel(item, cycleStart, now),
                                 onOpened: (closeFn) {
                                   _closeOpenCard?.call();
                                   _closeOpenCard = closeFn;

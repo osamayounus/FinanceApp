@@ -69,6 +69,59 @@ void main() {
     await memMatchesDb();
   });
 
+  group('auto-pay', () {
+    final today = DateTime.now();
+    final inThreeDays = today.add(const Duration(days: 3)).day;
+
+    test('add and edit keep the flag; without a due day it is off; paying and resetting keep it',
+        () async {
+      await bills.add('A', 1, '', dueDay: 5, autoPay: true);
+      await bills.add('B', 1, '', autoPay: true);
+      expect(mem().map((b) => b.autoPay), [true, false]);
+      await bills.edit(0, 'A', 1, '', dueDay: 6, autoPay: true);
+      expect(mem()[0].autoPay, isTrue);
+      await bills.markPaid(0);
+      await bills.resetAll();
+      expect(mem()[0].autoPay, isTrue);
+      await bills.edit(0, 'A', 1, '', autoPay: true); // due day taken off
+      expect(mem()[0].autoPay, isFalse);
+      expect((await db.getBills()).map((b) => b.autoPay), mem().map((b) => b.autoPay));
+    });
+
+    test('payDue charges the wallet once, marks only the due auto-pay bill paid, returns it',
+        () async {
+      await bills.add('Rent', 100, 'Housing', dueDay: today.day, autoPay: true);
+      await bills.add('Later', 50, '', dueDay: inThreeDays, autoPay: true);
+      await bills.add('Manual', 10, '', dueDay: today.day);
+
+      final paid = await bills.payDue();
+
+      expect(paid.map((b) => b.name), ['Rent']);
+      expect(mem().map((b) => b.isPaid), [true, false, false]);
+      expect(balanceOf(c, kWalletId), 500);
+      await memMatchesDb();
+      await expectStateMatchesDb(c, db);
+      expect(await bills.payDue(), isEmpty);
+      expect(balanceOf(c, kWalletId), 500);
+    });
+
+    test('payDue with a wallet that is too small pays nothing and keeps the bill unpaid', () async {
+      await bills.add('Big', 700, '', dueDay: today.day, autoPay: true);
+      expect(await bills.payDue(), isEmpty);
+      expect(mem().single.isPaid, isFalse);
+      expect(balanceOf(c, kWalletId), 600);
+      await expectStateMatchesDb(c, db);
+    });
+
+    test('payDue on a day the bill is due later pays it then (now can be passed)', () async {
+      await bills.add('Later', 50, '', dueDay: inThreeDays, autoPay: true);
+      expect(await bills.payDue(), isEmpty);
+      final paid = await bills.payDue(DateTime(today.year, today.month, today.day + 3));
+      expect(paid.map((b) => b.name), ['Later']);
+      expect(balanceOf(c, kWalletId), 550);
+    });
+  });
+
   test('out-of-range index does not corrupt state or DB', () async {
     await bills.add('A', 1, '');
     await expectLater(bills.delete(5), throwsA(anything));

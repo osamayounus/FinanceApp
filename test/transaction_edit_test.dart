@@ -54,6 +54,52 @@ void main() {
     return idOf(title, account: account);
   }
 
+  group('categories', () {
+    test('a withdrawal keeps the category it was created with', () async {
+      await n().withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, title: 'Lunch', category: 'Food'));
+      expect((await row(await idOf('Lunch')))!.category, 'Food');
+    });
+
+    test('editing can change the category', () async {
+      final id = await withdraw(kWalletId, 10, 'Lunch');
+      expect((await row(id))!.category, '');
+      expect(await n().updateTransaction(id, amount: 10, title: 'Lunch', note: '', category: 'Food'), isTrue);
+      expect((await row(id))!.category, 'Food');
+      expect(balanceOf(c, kWalletId), 590);
+    });
+
+    test('editing can clear the category', () async {
+      await n().withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, title: 'Lunch', category: 'Food'));
+      final id = await idOf('Lunch');
+      expect(await n().updateTransaction(id, amount: 10, title: 'Lunch', note: '', category: ''), isTrue);
+      expect((await row(id))!.category, '');
+    });
+
+    test('leaving the category out keeps the stored one', () async {
+      await n().withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, title: 'Lunch', category: 'Food'));
+      final id = await idOf('Lunch');
+      expect(await n().updateTransaction(id, amount: 12, title: 'Lunch', note: ''), isTrue);
+      expect((await row(id))!.category, 'Food');
+    });
+
+    test('a refused edit does not change the category either', () async {
+      await n().withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, title: 'Lunch', category: 'Food'));
+      final id = await idOf('Lunch');
+      final before = await snapshot();
+      expect(await n().updateTransaction(id, amount: 9999, title: 'Lunch', note: '', category: 'Health'), isFalse);
+      expect(await snapshot(), before);
+    });
+
+    test('the category survives an amount edit and a delete reverses the balance as before', () async {
+      await n().withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, title: 'Lunch', category: 'Food'));
+      final id = await idOf('Lunch');
+      await n().updateTransaction(id, amount: 25, title: 'Lunch', note: '', category: 'Food');
+      expect(balanceOf(c, kWalletId), 575);
+      expect(await n().deleteTransaction(id), isTrue);
+      expect(balanceOf(c, kWalletId), 600);
+    });
+  });
+
   group('editing a deposit', () {
     test('a bigger amount raises the balance by the difference', () async {
       final id = await deposit(kWalletId, 50, 'Bonus'); // 650
@@ -168,7 +214,7 @@ void main() {
     test('works on a custom account and leaves its debt alone', () async {
       final acc = await n().addCustomAccount('Trip', 0, 0);
       await deposit(acc.id, 100, 'Seed');
-      await n().lendDebt(acc.id, 30, mkTx(acc.id, 'debt_out', 30, title: 'Lent'));
+      await n().lendDebt(acc.id, 30, mkTx(acc.id, 'debt_out', 30, title: 'Lent'), person: 'Ali');
       final id = await withdraw(acc.id, 20, 'Hotel'); // 50 available, 30 lent
       expect(await n().deleteTransaction(id), isTrue);
       final a = c.read(accountsProvider).firstWhere((x) => x.id == acc.id);
@@ -219,9 +265,9 @@ void main() {
     });
 
     test('debts', () async {
-      await n().lendDebt(kWalletId, 40, mkTx(kWalletId, 'debt_out', 40, title: 'Lent'));
+      await n().lendDebt(kWalletId, 40, mkTx(kWalletId, 'debt_out', 40, title: 'Lent'), person: 'Ali');
       await expectUntouchable(await idOf('Lent'));
-      await n().repayDebt(kWalletId, 10, mkTx(kWalletId, 'debt_repaid', 10, title: 'Paid back'));
+      await n().repayDebt(kWalletId, 10, mkTx(kWalletId, 'debt_repaid', 10, title: 'Paid back'), debtId: await debtIdOf(db, kWalletId));
       await expectUntouchable(await idOf('Paid back'));
     });
   });

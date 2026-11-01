@@ -8,6 +8,9 @@ class TransactionModel {
   final double amount;
   final String title;
   final String note;
+
+  /// A `kBillCats` name, or '' for "none". Set on withdrawals and bill payments.
+  final String category;
   final int? relatedAccountId;
   final DateTime createdAt;
 
@@ -18,6 +21,7 @@ class TransactionModel {
     required this.amount,
     required this.title,
     this.note = '',
+    this.category = '',
     this.relatedAccountId,
     required this.createdAt,
   });
@@ -29,6 +33,7 @@ class TransactionModel {
         amount: amount,
         title: title,
         note: note,
+        category: category,
         relatedAccountId: relatedAccountId,
         createdAt: createdAt,
       );
@@ -39,6 +44,7 @@ class TransactionModel {
         'amount': amount,
         'title': title,
         'note': note,
+        'category': category,
         'related_account_id': relatedAccountId,
         'created_at': createdAt.millisecondsSinceEpoch,
       };
@@ -50,6 +56,7 @@ class TransactionModel {
         amount: (map['amount'] as num).toDouble(),
         title: map['title'] as String? ?? '',
         note: map['note'] as String? ?? '',
+        category: map['category'] as String? ?? '',
         relatedAccountId: map['related_account_id'] as int?,
         createdAt:
             DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),

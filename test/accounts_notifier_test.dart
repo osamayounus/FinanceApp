@@ -162,51 +162,112 @@ void main() {
 
   group('debt (lend / repay)', () {
     test('lend moves available -> loaned, total unchanged', () async {
-      expect(await n.lendDebt(kWalletId, 200, mkTx(kWalletId, 'debt_out', 200)), isTrue);
+      expect(await n.lendDebt(kWalletId, 200, mkTx(kWalletId, 'debt_out', 200), person: 'Ali'), isTrue);
       final w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
       expect((w.balance, w.loanedAmount, w.totalBalance), (400.0, 200.0, 600.0));
       await consistent();
     });
 
     test('lend more than available -> false, nothing changes', () async {
-      expect(await n.lendDebt(kWalletId, 601, mkTx(kWalletId, 'debt_out', 601)), isFalse);
+      expect(await n.lendDebt(kWalletId, 601, mkTx(kWalletId, 'debt_out', 601), person: 'Ali'), isFalse);
       expect(balanceOf(c, kWalletId), 600);
       await consistent();
     });
 
     test('partial and full repayment', () async {
-      await n.lendDebt(kWalletId, 200, mkTx(kWalletId, 'debt_out', 200));
-      expect(await n.repayDebt(kWalletId, 50, mkTx(kWalletId, 'debt_repaid', 50)), isTrue);
+      await n.lendDebt(kWalletId, 200, mkTx(kWalletId, 'debt_out', 200), person: 'Ali');
+      expect(await n.repayDebt(kWalletId, 50, mkTx(kWalletId, 'debt_repaid', 50), debtId: await debtIdOf(db, kWalletId)), isTrue);
       var w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
       expect((w.balance, w.loanedAmount), (450.0, 150.0));
-      await n.repayDebt(kWalletId, 150, mkTx(kWalletId, 'debt_repaid', 150));
+      await n.repayDebt(kWalletId, 150, mkTx(kWalletId, 'debt_repaid', 150), debtId: await debtIdOf(db, kWalletId));
       w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
       expect((w.balance, w.loanedAmount), (600.0, 0.0));
       await consistent();
     });
 
     test('repay with no outstanding debt -> false', () async {
-      expect(await n.repayDebt(kWalletId, 10, mkTx(kWalletId, 'debt_repaid', 10)), isFalse);
+      expect(await n.repayDebt(kWalletId, 10, mkTx(kWalletId, 'debt_repaid', 10), debtId: 999), isFalse);
     });
 
     test('over-repayment is clamped AND the logged tx amount matches what was applied',
         () async {
-      await n.lendDebt(kWalletId, 30, mkTx(kWalletId, 'debt_out', 30));
-      await n.repayDebt(kWalletId, 80, mkTx(kWalletId, 'debt_repaid', 80));
+      await n.lendDebt(kWalletId, 30, mkTx(kWalletId, 'debt_out', 30), person: 'Ali');
+      await n.repayDebt(kWalletId, 80, mkTx(kWalletId, 'debt_repaid', 80), debtId: await debtIdOf(db, kWalletId));
       expect(balanceOf(c, kWalletId), 600);
       final rep = (await db.getTransactions(kWalletId)).firstWhere((t) => t.type == 'debt_repaid');
       expect(rep.amount, 30, reason: 'history says 80 was repaid but only 30 was owed');
     });
 
     test('negative lend amount is rejected', () async {
-      await n.lendDebt(kWalletId, -100, mkTx(kWalletId, 'debt_out', -100));
+      await n.lendDebt(kWalletId, -100, mkTx(kWalletId, 'debt_out', -100), person: 'Ali');
       final w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
       expect((w.balance, w.loanedAmount), (600.0, 0.0));
     });
 
     test('debt is isolated per account', () async {
-      await n.lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40));
+      await n.lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40), person: 'Ali');
       expect(c.read(accountsProvider).firstWhere((a) => a.id == kWalletId).loanedAmount, 0);
+    });
+
+    test('lending records who owes it and until when', () async {
+      await n.lendDebt(kWalletId, 200, mkTx(kWalletId, 'debt_out', 200),
+          person: 'Ali', due: DateTime(2027, 5, 1));
+      final d = (await db.getOpenDebts()).single;
+      expect((d.person, d.amount, d.dueDate, d.accountId),
+          ('Ali', 200.0, DateTime(2027, 5, 1), kWalletId));
+      await consistent();
+    });
+
+    test('a blank person is refused before any money moves', () async {
+      await expectLater(
+          n.lendDebt(kWalletId, 50, mkTx(kWalletId, 'debt_out', 50), person: ' '),
+          throwsArgumentError);
+      expect(balanceOf(c, kWalletId), 600);
+      expect(await db.getOpenDebts(), isEmpty);
+      await consistent();
+    });
+
+    test('receiving back from one person leaves the others owing', () async {
+      await n.lendDebt(kWalletId, 30, mkTx(kWalletId, 'debt_out', 30), person: 'Ali');
+      await n.lendDebt(kWalletId, 50, mkTx(kWalletId, 'debt_out', 50), person: 'Sara');
+      final sara = (await db.getOpenDebts()).firstWhere((d) => d.person == 'Sara');
+
+      expect(await n.repayDebt(kWalletId, 20, mkTx(kWalletId, 'debt_repaid', 20), debtId: sara.id),
+          isTrue);
+
+      expect((await db.getOpenDebts()).map((d) => (d.person, d.remaining)),
+          [('Ali', 30.0), ('Sara', 30.0)]);
+      final w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
+      expect((w.balance, w.loanedAmount), (540.0, 60.0));
+      await consistent();
+    });
+
+    test('receiving back is capped at what that person owes, not at the account total',
+        () async {
+      await n.lendDebt(kWalletId, 30, mkTx(kWalletId, 'debt_out', 30), person: 'Ali');
+      await n.lendDebt(kWalletId, 50, mkTx(kWalletId, 'debt_out', 50), person: 'Sara');
+      final ali = (await db.getOpenDebts()).firstWhere((d) => d.person == 'Ali');
+
+      await n.repayDebt(kWalletId, 80, mkTx(kWalletId, 'debt_repaid', 80), debtId: ali.id);
+
+      final w = c.read(accountsProvider).firstWhere((a) => a.id == kWalletId);
+      expect((w.balance, w.loanedAmount), (550.0, 50.0));
+      expect((await db.getOpenDebts()).map((d) => (d.person, d.remaining)), [('Sara', 50.0)]);
+      final rep = (await db.getTransactions(kWalletId)).firstWhere((t) => t.type == 'debt_repaid');
+      expect(rep.amount, 30, reason: 'history says 80 came back but Ali only owed 30');
+      await consistent();
+    });
+
+    test('a debt of another account cannot be paid from this one', () async {
+      await n.lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40), person: 'Ali');
+      final ali = (await db.getOpenDebts()).single;
+
+      expect(await n.repayDebt(kWalletId, 10, mkTx(kWalletId, 'debt_repaid', 10), debtId: ali.id),
+          isFalse);
+
+      expect(balanceOf(c, kWalletId), 600);
+      expect((await db.getOpenDebts()).single.remaining, 40);
+      await consistent();
     });
   });
 
@@ -222,7 +283,7 @@ void main() {
         () async {
       final a = await n.addCustomAccount('Trip', 1, 0xe318);
       await n.deposit(a.id, 300, mkTx(a.id, 'deposit', 300));
-      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100));
+      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100), person: 'Ali');
       await n.updateCustomAccount(a.id, 'Trip 2', 2, 0xe319);
       final after = c.read(accountsProvider).firstWhere((x) => x.id == a.id);
       expect(after.customName, 'Trip 2');
@@ -236,9 +297,9 @@ void main() {
         () async {
       final a = await n.addCustomAccount('Trip', 1, 0xe318);
       await n.deposit(a.id, 300, mkTx(a.id, 'deposit', 300));
-      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100));
+      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100), person: 'Ali');
       await n.updateCustomAccount(a.id, 'Renamed', 1, 1); // user just renames
-      await n.lendDebt(a.id, 50, mkTx(a.id, 'debt_out', 50));
+      await n.lendDebt(a.id, 50, mkTx(a.id, 'debt_out', 50), person: 'Ali');
       final disk = (await db.getAccounts()).firstWhere((x) => x.id == a.id);
       expect(disk.loanedAmount, 150, reason: 'persisted loan shrank from 100+50 to ${disk.loanedAmount}');
     });
@@ -273,7 +334,7 @@ void main() {
         () async {
       final a = await n.addCustomAccount('Tmp', 0, 1);
       await n.deposit(a.id, 100, mkTx(a.id, 'deposit', 100));
-      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100)); // balance 0, loaned 100
+      await n.lendDebt(a.id, 100, mkTx(a.id, 'debt_out', 100), person: 'Ali'); // balance 0, loaned 100
       Object? err;
       try {
         await n.deleteCustomAccount(a.id);
@@ -310,7 +371,7 @@ void main() {
     test('does not touch loaned amounts or custom accounts', () async {
       final a = await n.addCustomAccount('Keep', 0, 1);
       await n.deposit(a.id, 5, mkTx(a.id, 'deposit', 5));
-      await n.lendDebt(kWalletId, 100, mkTx(kWalletId, 'debt_out', 100));
+      await n.lendDebt(kWalletId, 100, mkTx(kWalletId, 'debt_out', 100), person: 'Ali');
       await n.processSalaryDay(1000, 400);
       expect(balanceOf(c, a.id), 5);
       expect(c.read(accountsProvider).firstWhere((x) => x.id == kWalletId).loanedAmount, 100);

@@ -123,7 +123,7 @@ void main() {
     // seed: initial 100 (this month). Lend 40 -> balance 60.
     await db.insertTransaction(mkTx(kSavingsId, 'initial', 100));
     await c.read(accountsProvider.notifier)
-        .lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40));
+        .lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40), person: 'Ali');
     final d = await load();
     expect(d.savingsHistory.sublist(0, 5), List.filled(5, 0.0),
         reason: 'nothing happened before this month, got ${d.savingsHistory}');
@@ -134,8 +134,8 @@ void main() {
       () async {
     await db.insertTransaction(mkTx(kSavingsId, 'initial', 100));
     final n = c.read(accountsProvider.notifier);
-    await n.lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40));
-    await n.repayDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_repaid', 40));
+    await n.lendDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_out', 40), person: 'Ali');
+    await n.repayDebt(kSavingsId, 40, mkTx(kSavingsId, 'debt_repaid', 40), debtId: await debtIdOf(db, kSavingsId));
     final d = await load();
     expect(d.savingsHistory.sublist(0, 5), List.filled(5, 0.0),
         reason: 'got ${d.savingsHistory}');
@@ -181,6 +181,33 @@ void main() {
       txIn: mkTx(kSavingsId, 'transfer_in', 30),
     );
     expect((await load()).savingsChangeThisMonth, 37);
+  });
+
+  test('category spending: withdrawals and paid bills of this month, by category',
+      () async {
+    final n = c.read(accountsProvider.notifier);
+    await n.withdraw(kWalletId, 10, mkTx(kWalletId, 'withdraw', 10, category: 'Food'));
+    await n.withdraw(kWalletId, 5.5, mkTx(kWalletId, 'withdraw', 5.5, category: 'Food'));
+    await n.withdraw(kWalletId, 20, mkTx(kWalletId, 'bill_paid', 20, category: 'Housing'));
+    await n.withdraw(kWalletId, 3, mkTx(kWalletId, 'withdraw', 3)); // none
+    await n.withdraw(kSavingsId, 4, mkTx(kSavingsId, 'withdraw', 4, category: 'Health'));
+    expect((await load()).categorySpendingThisMonth,
+        {'Food': 15.5, 'Housing': 20.0, 'Other': 3.0, 'Health': 4.0});
+  });
+
+  test('category spending ignores income, transfers, debts and earlier months',
+      () async {
+    final n = c.read(accountsProvider.notifier);
+    await n.deposit(kWalletId, 50, mkTx(kWalletId, 'deposit', 50, category: 'Food'));
+    await n.lendDebt(kWalletId, 5, mkTx(kWalletId, 'debt_out', 5, category: 'Food'), person: 'Ali');
+    await db.insertTransaction(
+        mkTx(kWalletId, 'withdraw', 99, category: 'Food', at: monthsAgo(1)));
+    expect((await load()).categorySpendingThisMonth, isEmpty);
+  });
+
+  test('a category name nobody knows counts as Other', () async {
+    await db.insertTransaction(mkTx(kWalletId, 'withdraw', 7, category: 'Crypto'));
+    expect((await load()).categorySpendingThisMonth, {'Other': 7.0});
   });
 
   test('analytics recompute after a new transaction', () async {

@@ -5,6 +5,8 @@ import 'package:financeapp/models/transaction_model.dart';
 import 'package:financeapp/models/user_model.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/networks/local/database.dart';
+import 'package:financeapp/shared/networks/local/profile_manager.dart';
+import 'package:financeapp/shared/services/app_lock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -51,7 +53,8 @@ Future<({AppDatabase db, ProviderContainer c})> seededContainer(
     dbProvider.overrideWithValue(db),
     userProvider.overrideWith((ref) => UserNotifier(db, kTestUser)),
     accountsProvider.overrideWith((ref) => AccountsNotifier(db, [])),
-    expensesProvider.overrideWith((ref) => BillsNotifier(db, <ExpenseModel>[])),
+    expensesProvider.overrideWith((ref) => BillsNotifier(db, <ExpenseModel>[],
+        onCharged: () => ref.read(accountsProvider.notifier).reload())),
   ]);
   // Replace the empty placeholder state with what is really in the DB.
   c.read(accountsProvider.notifier).state = await db.getAccounts();
@@ -59,7 +62,11 @@ Future<({AppDatabase db, ProviderContainer c})> seededContainer(
 }
 
 TransactionModel mkTx(int accountId, String type, double amount,
-        {DateTime? at, String title = 't', String note = '', int? related}) =>
+        {DateTime? at,
+        String title = 't',
+        String note = '',
+        String category = '',
+        int? related}) =>
     TransactionModel(
       id: 0,
       accountId: accountId,
@@ -67,6 +74,7 @@ TransactionModel mkTx(int accountId, String type, double amount,
       amount: amount,
       title: title,
       note: note,
+      category: category,
       relatedAccountId: related,
       createdAt: at ?? DateTime.now(),
     );
@@ -85,4 +93,47 @@ Future<void> expectStateMatchesDb(ProviderContainer c, AppDatabase db) async {
     expect(mem[id]!.loanedAmount, disk[id]!.loanedAmount,
         reason: 'loaned_amount of #$id');
   }
+  await expectDebtsMatchAccounts(db);
+}
+
+/// What is still owed on an account's debts must equal its loaned_amount.
+Future<void> expectDebtsMatchAccounts(AppDatabase db) async {
+  final debts = await db.getOpenDebts();
+  for (final a in await db.getAccounts()) {
+    final owed = debts
+        .where((d) => d.accountId == a.id)
+        .fold<double>(0, (s, d) => s + d.remaining);
+    expect(owed, closeTo(a.loanedAmount, 1e-9),
+        reason: 'debts of #${a.id} do not add up to its loaned_amount');
+  }
+}
+
+/// Id of the first open debt of [accountId].
+Future<int> debtIdOf(AppDatabase db, int accountId) async =>
+    (await db.getOpenDebts()).firstWhere((d) => d.accountId == accountId).id;
+
+/// The phone's fingerprint / PIN prompt, answering as told.
+class FakeAuthenticator implements Authenticator {
+  bool supported;
+  bool accept;
+  final asked = <String>[];
+  FakeAuthenticator({this.supported = true, this.accept = true});
+
+  @override
+  Future<bool> isSupported() async => supported;
+
+  @override
+  Future<bool> authenticate(String reason) async {
+    asked.add(reason);
+    return accept;
+  }
+}
+
+/// Fresh app-lock state: off, nothing saved, answering through [auth].
+Future<void> resetAppLock(FakeAuthenticator auth) async {
+  await ProfileManager.instance.setLockEnabled(false);
+  AppLock.instance
+    ..auth = auth
+    ..busy = false
+    ..enabled.value = false;
 }

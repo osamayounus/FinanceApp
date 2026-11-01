@@ -5,8 +5,11 @@
 // Monthly Budget, and rolls over any Savings contributions.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/modules/fixedExp/bill_due.dart';
+import 'package:financeapp/modules/salaryDay/salary_cycle.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
+import 'package:financeapp/shared/networks/local/database.dart';
 import 'package:financeapp/shared/overlays/salary_day_overlay.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
@@ -131,7 +134,22 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
   void _onTapDown(_) => _pressCtrl.forward();
   void _onTapUp(_) => _pressCtrl.reverse();
   void _onTapCancel() => _pressCtrl.reverse();
-  void _onTap() => _showConfirmDialog();
+  void _onTap() {
+    final last = ref.read(lastSalaryProvider).valueOrNull;
+    if (salaryProcessed(DateTime.now(), ref.read(userProvider).salaryDay, last)) {
+      _alreadyProcessed(ScaffoldMessenger.of(context), last!);
+    } else {
+      _showConfirmDialog();
+    }
+  }
+
+  void _alreadyProcessed(ScaffoldMessengerState messenger, DateTime at) {
+    final next = nextSalaryDay(DateTime.now(), ref.read(userProvider).salaryDay);
+    AppToast.error(
+        messenger,
+        'Salary already processed on ${salaryDate(at)}. Next salary day: '
+        '${salaryDate(next)} (change the day in Profile if it arrives earlier)');
+  }
 
   void _showConfirmDialog() {
     final user = ref.read(userProvider);
@@ -252,8 +270,14 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
       // Stored salary/budget from before the profile editor was validated.
       AppToast.error(messenger, '${e.message} — fix it in your profile first');
       return;
+    } on SalaryAlreadyProcessed catch (e) {
+      _alreadyProcessed(messenger, e.at);
+      return;
     }
     await ref.read(expensesProvider.notifier).resetAll();
+    // Bills due on or before today (a due day on salary day itself) are charged right away.
+    final paid = await ref.read(expensesProvider.notifier).payDue();
+    if (paid.isNotEmpty) AppToast.success(messenger, autoPaidText(paid, currency));
 
     if (!mounted) return;
     setState(() {
@@ -452,6 +476,19 @@ class _SalarydaypageState extends ConsumerState<Salarydaypage>
                 ),
                 SizedBox(height: AppSizes.xxl),
 
+                Text(
+                  salaryStatus(DateTime.now(), ref.watch(userProvider).salaryDay,
+                      ref.watch(lastSalaryProvider).valueOrNull),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: AppSizes.fontS,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: AppSizes.s),
                 Text(
                   'Your balance will be updated automatically',
                   textAlign: TextAlign.center,

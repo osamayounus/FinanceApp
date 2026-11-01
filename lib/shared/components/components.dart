@@ -6,6 +6,7 @@
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:financeapp/shared/styles/sizes.dart';
 import 'package:financeapp/shared/utils/currency.dart';
+import 'package:financeapp/shared/utils/dates.dart';
 import 'package:flutter/material.dart';
 
 export 'transaction_card.dart';
@@ -122,70 +123,20 @@ class CardBalanceSection extends StatelessWidget {
         ),
         SizedBox(height: AppSizes.xs),
 
-        // Available + divider + Total
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Available (main, large)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'AVAILABLE',
-                  style: TextStyle(
-                    fontFamily: 'Rubik',
-                    fontSize: 10,
-                    color: subColor,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      _fmt(available),
-                      style: TextStyle(
-                        fontFamily: 'Rubik',
-                        fontSize: AppSizes.cardBalanceSize,
-                        fontWeight: FontWeight.w900,
-                        color: mainColor,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      currency,
-                      style: TextStyle(
-                        fontFamily: 'Rubik',
-                        fontSize: AppSizes.fontXS,
-                        fontWeight: FontWeight.w500,
-                        color: subColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            SizedBox(width: AppSizes.m),
-            // Vertical divider
-            Container(
-              height: 36,
-              width: 1,
-              margin: EdgeInsets.only(bottom: AppSizes.xs),
-              color: subColor.withValues(alpha: 0.25),
-            ),
-            SizedBox(width: AppSizes.m),
-
-            // Total (secondary, smaller, bottom-aligned)
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSizes.xs),
-              child: Column(
+        // Available + divider + Total; shrinks when 4-digit amounts don't fit
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Available (main, large)
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'TOTAL',
+                    'AVAILABLE',
                     style: TextStyle(
                       fontFamily: 'Rubik',
                       fontSize: 10,
@@ -199,12 +150,12 @@ class CardBalanceSection extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        _fmt(_total),
+                        _fmt(available),
                         style: TextStyle(
                           fontFamily: 'Rubik',
-                          fontSize: AppSizes.fontL,
-                          fontWeight: FontWeight.w700,
-                          color: subColor,
+                          fontSize: AppSizes.cardBalanceSize,
+                          fontWeight: FontWeight.w900,
+                          color: mainColor,
                         ),
                       ),
                       const SizedBox(width: 3),
@@ -212,17 +163,72 @@ class CardBalanceSection extends StatelessWidget {
                         currency,
                         style: TextStyle(
                           fontFamily: 'Rubik',
-                          fontSize: 10,
+                          fontSize: AppSizes.fontXS,
                           fontWeight: FontWeight.w500,
-                          color: subColor.withValues(alpha: 0.7),
+                          color: subColor,
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-          ],
+
+              SizedBox(width: AppSizes.m),
+              // Vertical divider
+              Container(
+                height: 36,
+                width: 1,
+                margin: EdgeInsets.only(bottom: AppSizes.xs),
+                color: subColor.withValues(alpha: 0.25),
+              ),
+              SizedBox(width: AppSizes.m),
+
+              // Total (secondary, smaller, bottom-aligned)
+              Padding(
+                padding: EdgeInsets.only(bottom: AppSizes.xs),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL',
+                      style: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: 10,
+                        color: subColor,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          _fmt(_total),
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: AppSizes.fontL,
+                            fontWeight: FontWeight.w700,
+                            color: subColor,
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          currency,
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: subColor.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -554,6 +560,115 @@ class DateTimePickerField extends StatelessWidget {
                 onTap: () => onChanged(null),
                 child: Icon(Icons.close_rounded,
                     color: Colors.grey[400], size: AppSizes.iconS),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A tappable date tile (date only) with an X to clear it. While empty it reads
+/// "[label] (optional)"; once a date is set, [label] is the small caption above it.
+class OptionalDateField extends StatelessWidget {
+  final String label;
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+
+  const OptionalDateField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  Future<void> _pick(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: value ?? now.add(const Duration(days: 7)),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(now.year + 30),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final date = value;
+    return GestureDetector(
+      onTap: () => _pick(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.pageBackground,
+          borderRadius: BorderRadius.circular(AppSizes.radiusL),
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSizes.m,
+          vertical: AppSizes.m,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.event_rounded,
+              color: Colors.grey[400],
+              size: AppSizes.iconM,
+            ),
+            SizedBox(width: AppSizes.m),
+            Expanded(
+              child: date == null
+                  ? Text(
+                      '$label (optional)',
+                      style: TextStyle(
+                        fontFamily: 'Rubik',
+                        fontSize: AppSizes.fontM,
+                        color: Colors.grey[400],
+                      ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: 11,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          fmtDay(date),
+                          style: TextStyle(
+                            fontFamily: 'Rubik',
+                            fontSize: AppSizes.fontM,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+            if (date != null)
+              GestureDetector(
+                onTap: () => onChanged(null),
+                child: Tooltip(
+                  message: 'Clear date',
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: Colors.grey[400],
+                      size: AppSizes.iconS,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),

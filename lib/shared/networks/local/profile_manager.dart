@@ -134,6 +134,27 @@ class ProfileManager {
     );
   }
 
+  // ── App lock ──────────────────────────────────────────────────────────────
+
+  /// Whether the app asks for the phone's fingerprint / PIN on start. Device-wide
+  /// (profiles.db), because it has to work before any profile is opened.
+  Future<bool> isLockEnabled() async {
+    final db = await _database;
+    final rows = await db.query('settings',
+        where: 'key = ?', whereArgs: ['app_lock'], limit: 1);
+    return rows.isNotEmpty;
+  }
+
+  Future<void> setLockEnabled(bool on) async {
+    final db = await _database;
+    if (on) {
+      await db.insert('settings', {'key': 'app_lock', 'value': '1'},
+          conflictAlgorithm: ConflictAlgorithm.replace);
+    } else {
+      await db.delete('settings', where: 'key = ?', whereArgs: ['app_lock']);
+    }
+  }
+
   // ── Migration ─────────────────────────────────────────────────────────────
 
   /// If a legacy single-user `finance.db` exists but no profiles are registered,

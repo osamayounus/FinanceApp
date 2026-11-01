@@ -5,8 +5,14 @@
 //   Step 2 – enter amount + optional title/note, then confirm
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:financeapp/models/account_model.dart';
+import 'package:financeapp/models/debt_model.dart';
 import 'package:financeapp/models/transaction_model.dart';
+import 'package:financeapp/modules/fixedExp/bill_categories.dart';
+import 'package:financeapp/models/savings_goal_model.dart';
+import 'package:financeapp/modules/analytics/savings_goals.dart';
 import 'package:financeapp/modules/home/cards/customAccountCard.dart';
+import 'package:financeapp/modules/home/widgets/debt_picker.dart';
+import 'package:financeapp/modules/home/widgets/goal_picker.dart';
 import 'package:financeapp/providers/app_provider.dart';
 import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
@@ -42,10 +48,15 @@ class _OperationPageState extends ConsumerState<OperationPage> {
 
   _Account? _account;
   String? _operation; // 'deposit' | 'withdraw'
+  String _category = ''; // withdrawals only; '' = none
+  int? _goalId; // Savings deposits/withdrawals only; null = no goal
+  int? _debtId; // Receive Back only: the debt being paid
+  DateTime? _dueDate; // Give Debt only: pay back by
 
   final _amountCtrl = TextEditingController();
   final _titleCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _personCtrl = TextEditingController(); // Give Debt only
   DateTime? _customDate;
 
   @override
@@ -53,6 +64,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     _amountCtrl.dispose();
     _titleCtrl.dispose();
     _noteCtrl.dispose();
+    _personCtrl.dispose();
     super.dispose();
   }
 
@@ -76,18 +88,26 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       return;
     }
 
-    // Debt repayment cannot exceed the outstanding loaned amount.
+    final person = _personCtrl.text.trim();
+    if (_operation == 'debt_out' && person.isEmpty) {
+      AppToast.error(messenger, 'Enter who you are lending to');
+      return;
+    }
+
+    // Debt repayment cannot exceed what that person still owes.
+    Debt? debt;
     if (_operation == 'debt_repaid') {
-      final live = ref.read(accountsProvider)
-          .firstWhere((a) => a.id == _account!.id);
-      if (live.loanedAmount <= 0) {
+      debt = (ref.read(debtsProvider).valueOrNull ?? const <Debt>[])
+          .where((d) => d.id == _debtId)
+          .firstOrNull;
+      if (debt == null) {
         AppToast.error(messenger, 'No outstanding debt on ${_account!.name}');
         return;
       }
-      if (amount > live.loanedAmount) {
+      if (amount > debt.remaining) {
         AppToast.error(
           messenger,
-          'Cannot exceed outstanding: ${fmtAmt(live.loanedAmount, currency)}',
+          '${debt.person} owes ${fmtAmt(debt.remaining, currency)}, not more',
         );
         return;
       }
@@ -96,8 +116,8 @@ class _OperationPageState extends ConsumerState<OperationPage> {
     final defaultTitle = switch (_operation) {
       'deposit'     => AppStrings.deposit,
       'withdraw'    => AppStrings.withdraw,
-      'debt_out'    => 'Debt Given',
-      'debt_repaid' => 'Debt Received',
+      'debt_out'    => 'Lent to $person',
+      'debt_repaid' => '${debt?.person} paid back',
       _             => AppStrings.deposit,
     };
     final title = _titleCtrl.text.trim().isNotEmpty
@@ -113,6 +133,7 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       amount: amount,
       title: title,
       note: note,
+      category: _operation == 'withdraw' ? _category : '',
       createdAt: _customDate ?? DateTime.now(),
     );
 
@@ -123,9 +144,11 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       case 'withdraw':
         success = await ref.read(accountsProvider.notifier).withdraw(_account!.id, amount, tx);
       case 'debt_out':
-        success = await ref.read(accountsProvider.notifier).lendDebt(_account!.id, amount, tx);
+        success = await ref.read(accountsProvider.notifier).lendDebt(
+            _account!.id, amount, tx, person: person, due: _dueDate);
       case 'debt_repaid':
-        success = await ref.read(accountsProvider.notifier).repayDebt(_account!.id, amount, tx);
+        success = await ref.read(accountsProvider.notifier).repayDebt(
+            _account!.id, amount, tx, debtId: debt!.id);
       default:
         success = false;
     }
@@ -139,11 +162,33 @@ class _OperationPageState extends ConsumerState<OperationPage> {
       return;
     }
 
+    // The money is already in (or out of) Savings; now fill (or empty) the goal's envelope.
+    var goalNote = '';
+    final isSavings = _account!.id == kSavingsId;
+    final goal = !isSavings || _goalId == null
+        ? null
+        : (ref.read(savingsGoalsProvider).valueOrNull ?? const <SavingsGoal>[])
+            .where((g) => g.id == _goalId)
+            .firstOrNull;
+    if (goal != null && (_operation == 'deposit' || _operation == 'withdraw')) {
+      final deposit = _operation == 'deposit';
+      final share = goalShare(goal, amount, deposit: deposit);
+      if (share > 0) {
+        final db = ref.read(dbProvider);
+        await db.addToGoal(goal.id, deposit ? share : -share);
+        ref.invalidate(savingsGoalsProvider);
+        goalNote = deposit
+            ? ' · ${fmtAmt(share, currency)} to ${goal.name}'
+            : ' · ${fmtAmt(share, currency)} from ${goal.name}';
+      }
+      if (!mounted) return;
+    }
+
     final toastMsg = switch (_operation) {
-      'deposit'     => '+ $amountStr deposited to ${_account!.name}',
-      'withdraw'    => '- $amountStr withdrawn from ${_account!.name}',
-      'debt_out'    => '$amountStr lent from ${_account!.name}',
-      'debt_repaid' => '$amountStr received back into ${_account!.name}',
+      'deposit'     => '+ $amountStr deposited to ${_account!.name}$goalNote',
+      'withdraw'    => '- $amountStr withdrawn from ${_account!.name}$goalNote',
+      'debt_out'    => '$amountStr lent to $person',
+      'debt_repaid' => '$amountStr received back from ${debt?.person}',
       _             => 'Done',
     };
     AppToast.success(messenger, toastMsg);
@@ -154,6 +199,9 @@ class _OperationPageState extends ConsumerState<OperationPage> {
   Widget build(BuildContext context) {
     final currency = ref.watch(currencyProvider);
     final accounts = ref.watch(accountsProvider);
+    // Watched from the first step so the goals are loaded by the time they are needed.
+    final goals = ref.watch(savingsGoalsProvider).valueOrNull ?? const <SavingsGoal>[];
+    final debts = ref.watch(debtsProvider).valueOrNull ?? const <Debt>[];
 
     final List<_Account> accList = [
       _Account(
@@ -215,9 +263,16 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                   onBack: _back,
                   onSelect: (op) {
                     _operation = op;
+                    _category = '';
+                    _goalId = null;
+                    _dueDate = null;
+                    _debtId = op == 'debt_repaid'
+                        ? debts.where((d) => d.accountId == _account!.id).firstOrNull?.id
+                        : null;
                     _amountCtrl.clear();
                     _titleCtrl.clear();
                     _noteCtrl.clear();
+                    _personCtrl.clear();
                     _next();
                   },
                 ),
@@ -228,6 +283,17 @@ class _OperationPageState extends ConsumerState<OperationPage> {
                   amountCtrl: _amountCtrl,
                   titleCtrl: _titleCtrl,
                   noteCtrl: _noteCtrl,
+                  personCtrl: _personCtrl,
+                  category: _category,
+                  onCategoryChanged: (c) => setState(() => _category = c),
+                  goals: goals,
+                  goalId: _goalId,
+                  onGoalChanged: (id) => setState(() => _goalId = id),
+                  debts: debts.where((d) => d.accountId == _account!.id).toList(),
+                  debtId: _debtId,
+                  onDebtChanged: (id) => setState(() => _debtId = id),
+                  dueDate: _dueDate,
+                  onDueChanged: (d) => setState(() => _dueDate = d),
                   customDate: _customDate,
                   onDateChanged: (d) => setState(() => _customDate = d),
                   onBack: _back,
@@ -408,6 +474,17 @@ class _StepAmount extends StatelessWidget {
   final TextEditingController amountCtrl;
   final TextEditingController titleCtrl;
   final TextEditingController noteCtrl;
+  final TextEditingController personCtrl;
+  final String category;
+  final ValueChanged<String> onCategoryChanged;
+  final List<SavingsGoal> goals;
+  final int? goalId;
+  final ValueChanged<int?> onGoalChanged;
+  final List<Debt> debts; // open debts of this account
+  final int? debtId;
+  final ValueChanged<int> onDebtChanged;
+  final DateTime? dueDate;
+  final ValueChanged<DateTime?> onDueChanged;
   final DateTime? customDate;
   final ValueChanged<DateTime?> onDateChanged;
   final VoidCallback onBack;
@@ -421,6 +498,17 @@ class _StepAmount extends StatelessWidget {
     required this.amountCtrl,
     required this.titleCtrl,
     required this.noteCtrl,
+    required this.personCtrl,
+    required this.category,
+    required this.onCategoryChanged,
+    required this.goals,
+    required this.goalId,
+    required this.onGoalChanged,
+    required this.debts,
+    required this.debtId,
+    required this.onDebtChanged,
+    required this.dueDate,
+    required this.onDueChanged,
     required this.customDate,
     required this.onDateChanged,
     required this.onBack,
@@ -428,7 +516,7 @@ class _StepAmount extends StatelessWidget {
     required this.loanedAmount,
   });
 
-  bool get _isDeposit   => operation == 'deposit';
+  bool get _isDeposit  => operation == 'deposit';
   bool get _isDebtOut   => operation == 'debt_out';
   bool get _isDebtBack  => operation == 'debt_repaid';
 
@@ -529,7 +617,7 @@ class _StepAmount extends StatelessWidget {
               padding: EdgeInsets.only(left: AppSizes.xs),
               child: Text(
                 _isDebtBack
-                    ? 'Outstanding: ${fmtAmt(loanedAmount, currency)}'
+                    ? 'Outstanding: ${fmtAmt(debts.where((d) => d.id == debtId).firstOrNull?.remaining ?? loanedAmount, currency)}'
                     : 'Available: ${fmtAmt(account.balance, currency)}',
                 style: TextStyle(
                   fontFamily: 'Rubik',
@@ -540,6 +628,26 @@ class _StepAmount extends StatelessWidget {
             ),
           SizedBox(height: AppSizes.m),
 
+          // Who borrowed it / who is paying it back
+          if (_isDebtOut) ...[
+            _DetailField(
+              controller: personCtrl,
+              label: 'Who is borrowing it?',
+              hint: 'e.g. Ali',
+              icon: Icons.person_outline_rounded,
+            ),
+            SizedBox(height: AppSizes.s + 4),
+          ],
+          if (_isDebtBack) ...[
+            DebtPicker(
+              debts: debts,
+              selected: debtId,
+              currency: currency,
+              onChanged: onDebtChanged,
+            ),
+            SizedBox(height: AppSizes.s + 4),
+          ],
+
           // Title field
           _DetailField(
             controller: titleCtrl,
@@ -547,9 +655,9 @@ class _StepAmount extends StatelessWidget {
             hint: _isDeposit
                 ? 'e.g. Freelance payment'
                 : _isDebtOut
-                    ? 'e.g. Lent to Ali'
+                    ? 'e.g. Car repair'
                     : _isDebtBack
-                        ? 'e.g. Ali paid back'
+                        ? 'e.g. First instalment'
                         : 'e.g. Grocery shopping',
             icon: Icons.label_outline_rounded,
           ),
@@ -563,6 +671,36 @@ class _StepAmount extends StatelessWidget {
             icon: Icons.notes_rounded,
           ),
           SizedBox(height: AppSizes.s + 4),
+
+          if (_isDebtOut) ...[
+            OptionalDateField(
+              label: 'Pay back by',
+              value: dueDate,
+              onChanged: onDueChanged,
+            ),
+            SizedBox(height: AppSizes.s + 4),
+          ],
+
+          // Which goal the Savings money goes into / comes out of (optional)
+          if (account.id == kSavingsId &&
+              goals.isNotEmpty &&
+              (_isDeposit || operation == 'withdraw')) ...[
+            GoalPicker(
+              goals: goals,
+              selected: goalId,
+              label: _isDeposit
+                  ? 'Put into a goal (optional)'
+                  : 'Take from a goal (optional)',
+              onChanged: onGoalChanged,
+            ),
+            SizedBox(height: AppSizes.s + 4),
+          ],
+
+          // Spending category (withdrawals only)
+          if (operation == 'withdraw') ...[
+            CategoryPicker(selected: category, onChanged: onCategoryChanged),
+            SizedBox(height: AppSizes.s + 4),
+          ],
 
           // Date & Time
           DateTimePickerField(

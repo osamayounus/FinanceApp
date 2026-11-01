@@ -84,6 +84,11 @@ class AppStrings {
   static const String monthlySalary = 'Monthly Salary';
   static const String editName = 'Edit Name';
   static const String editSalary = 'Edit Salary';
+  static const String salaryDay = 'Salary Day';
+  static const String editSalaryDay = 'Edit Salary Day';
+  static const String sectionSecurity = 'SECURITY';
+  static const String appLock = 'App Lock';
+  static const String enterValidDay = 'Enter a day from 1 to 31';
   static const String editMonthlyBudget = 'Edit Monthly Budget';
   static const String sectionDangerZone = 'DANGER ZONE';
   static const String resetAppData = 'Reset Current Profile';
@@ -107,6 +112,11 @@ class AppStrings {
   static const String editBillTitle = 'Edit Bill';
   static const String billName = 'Bill Name';
   static const String sectionCategory = 'CATEGORY';
+  static const String billDueDay = 'Due day of the month (optional)';
+  static const String invalidDueDay = 'Due day must be between 1 and 31';
+  static const String autoPay = 'Pay automatically';
+  static const String autoPayHint = 'Taken from your Wallet on the due day';
+  static const String autoPayNeedsDueDay = 'Set a due day to pay it automatically';
   static const String markAsPaid = 'Mark as Paid?';
   static const String noBillsYet = 'No bills yet';
   static const String noBillsSubtitle = 'Tap + to add your first fixed expense';

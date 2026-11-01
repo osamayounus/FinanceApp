@@ -23,7 +23,9 @@ void main() {
 
   /// Six months, oldest first; the last one is "this month".
   AnalyticsData data(List<double> expenses,
-      {double income = 1000, double savingsChange = 0}) {
+      {double income = 1000,
+      double savingsChange = 0,
+      Map<String, double> spending = const {}}) {
     return AnalyticsData(
       months: [
         for (var i = 0; i < 6; i++)
@@ -36,6 +38,7 @@ void main() {
       savingsHistory: List.filled(6, 0),
       currentMonthTimeline: const [],
       savingsChangeThisMonth: savingsChange,
+      categorySpendingThisMonth: spending,
     );
   }
 
@@ -45,6 +48,7 @@ void main() {
     double budgetBalance = 400,
     double monthlyBudget = 400,
     List<ExpenseModel> bills = const [],
+    Map<String, double> limits = const {},
   }) async {
     t.view.physicalSize = const Size(1170, 2532);
     t.view.devicePixelRatio = 3;
@@ -60,6 +64,7 @@ void main() {
               monthlyBudget: monthlyBudget,
               bills: bills,
               currency: 'JOD',
+              categoryBudgets: limits,
             ),
           ),
         ),
@@ -122,6 +127,51 @@ void main() {
     testWidgets('high usage still warns', (t) async {
       final texts = await shown(t, data([0, 0, 0, 0, 0, 50]), budgetBalance: 40);
       expect(texts, contains('90% of your monthly budget has been used'));
+    });
+  });
+
+  group('category limits', () {
+    final List<double> none = [0, 0, 0, 0, 0, 0];
+
+    testWidgets('a category past its limit is called out with the amounts', (t) async {
+      final texts = await shown(t, data(none, spending: {'Food': 120}),
+          limits: {'Food': 100});
+      expect(texts, contains('Food is over its limit (120 of 100 JOD)'));
+    });
+
+    testWidgets('exactly at the limit is "used 100%", not over', (t) async {
+      final texts = await shown(t, data(none, spending: {'Food': 100}),
+          limits: {'Food': 100});
+      expect(texts, contains('Food has used 100% of its limit'));
+      expect(texts.where((s) => s.contains('over its limit')), isEmpty);
+    });
+
+    testWidgets('80% and above warns', (t) async {
+      final texts = await shown(t, data(none, spending: {'Food': 85}),
+          limits: {'Food': 100});
+      expect(texts, contains('Food has used 85% of its limit'));
+    });
+
+    testWidgets('below 80% says nothing', (t) async {
+      final texts = await shown(t, data(none, spending: {'Food': 79}),
+          limits: {'Food': 100});
+      expect(texts.where((s) => s.contains('limit')), isEmpty, reason: '$texts');
+    });
+
+    testWidgets('only the worst category is reported', (t) async {
+      final texts = await shown(
+          t,
+          data(none, spending: {'Food': 90, 'Transport': 150, 'Health': 20}),
+          limits: {'Food': 100, 'Transport': 100, 'Health': 100});
+      final limitTexts = texts.where((s) => s.contains('limit')).toList();
+      expect(limitTexts, ['Transport is over its limit (150 of 100 JOD)']);
+    });
+
+    testWidgets('a limit with no spending, or spending with no limit, is silent', (t) async {
+      final a = await shown(t, data(none), limits: {'Food': 100});
+      expect(a.where((s) => s.contains('limit')), isEmpty);
+      final b = await shown(t, data(none, spending: {'Food': 500}));
+      expect(b.where((s) => s.contains('limit')), isEmpty);
     });
   });
 

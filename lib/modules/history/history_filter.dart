@@ -93,10 +93,11 @@ class HistoryFilter {
 
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return true;
-    // Same text the card shows, plus the amount as typed ("12.5") or padded ("12.50").
+    // Same text the card shows, plus the category and the amount as typed ("12.5") or padded ("12.50").
     final haystack = [
       tx.title.isNotEmpty ? tx.title : display,
       txUserNote(tx) ?? '',
+      tx.category,
       plainAmt(tx.amount),
       tx.amount.toStringAsFixed(2),
     ].join('\n').toLowerCase();

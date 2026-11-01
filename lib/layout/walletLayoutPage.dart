@@ -6,19 +6,27 @@
 import 'dart:math';
 
 import 'package:financeapp/modules/analytics/analyticsPage.dart';
+import 'package:financeapp/modules/fixedExp/bill_due.dart';
 import 'package:financeapp/modules/home/homePage.dart';
 import 'package:financeapp/modules/profile/profilePage.dart';
 import 'package:financeapp/modules/salaryDay/salaryDayPage.dart';
 import 'package:financeapp/providers/app_provider.dart';
+import 'package:financeapp/shared/components/components.dart';
 import 'package:financeapp/shared/styles/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-class Walletlayoutpage extends ConsumerWidget {
+class Walletlayoutpage extends ConsumerStatefulWidget {
   const Walletlayoutpage({super.key});
 
+  @override
+  ConsumerState<Walletlayoutpage> createState() => _WalletlayoutpageState();
+}
+
+class _WalletlayoutpageState extends ConsumerState<Walletlayoutpage>
+    with WidgetsBindingObserver {
   static const List<Widget> _pages = [
     Salarydaypage(),
     Homepage(),
@@ -27,7 +35,34 @@ class Walletlayoutpage extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _payDueBills());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _payDueBills();
+  }
+
+  /// Auto-pay bills are charged when the app opens or comes back, not by a
+  /// background job. Safe to run any time: a bill is only ever charged once.
+  Future<void> _payDueBills() async {
+    final paid = await ref.read(expensesProvider.notifier).payDue();
+    if (paid.isEmpty || !mounted) return;
+    AppToast.success(ScaffoldMessenger.of(context),
+        autoPaidText(paid, ref.read(currencyProvider)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = ref.watch(navIndexProvider);
     return Scaffold(
       extendBody: true,

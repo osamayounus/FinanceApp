@@ -29,6 +29,9 @@ class SmartInsightsCard extends StatelessWidget {
   final List<ExpenseModel> bills;
   final String currency;
 
+  /// Monthly limit per category name (see [AnalyticsData.categorySpendingThisMonth]).
+  final Map<String, double> categoryBudgets;
+
   const SmartInsightsCard({
     super.key,
     required this.data,
@@ -36,6 +39,7 @@ class SmartInsightsCard extends StatelessWidget {
     required this.monthlyBudget,
     required this.bills,
     required this.currency,
+    this.categoryBudgets = const {},
   });
 
   // ── Insight generation ────────────────────────────────────────────────────
@@ -100,6 +104,35 @@ class SmartInsightsCard extends StatelessWidget {
           ),
         );
       }
+    }
+
+    // ── Rule 2b: The category closest to (or past) its own limit ──────────
+    String? worstCat;
+    var worstRatio = 0.0;
+    for (final e in categoryBudgets.entries) {
+      if (!(e.value > 0)) continue;
+      final ratio = (data.categorySpendingThisMonth[e.key] ?? 0) / e.value;
+      if (ratio > worstRatio) {
+        worstRatio = ratio;
+        worstCat = e.key;
+      }
+    }
+    if (worstCat != null && worstRatio >= 0.8) {
+      final spent = data.categorySpendingThisMonth[worstCat]!;
+      out.add(
+        worstRatio > 1
+            ? _Insight(
+                Icons.warning_amber_rounded,
+                AppColors.myRed,
+                '$worstCat is over its limit '
+                '(${fmtNum(spent, currency)} of ${fmtNum(categoryBudgets[worstCat]!, currency)} $currency)',
+              )
+            : _Insight(
+                Icons.warning_amber_rounded,
+                Colors.orange,
+                '$worstCat has used ${(worstRatio * 100).round()}% of its limit',
+              ),
+      );
     }
 
     // ── Rule 3: Savings activity this month ───────────────────────────────

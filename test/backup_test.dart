@@ -40,7 +40,13 @@ void main() {
     final trip = await n.addCustomAccount('Trip Fund', 3, 57424);
     await n.deposit(trip.id, 80,
         mkTx(trip.id, 'deposit', 80, title: 'Seed', note: 'first, "quoted" ✓ نص'));
-    await n.lendDebt(kWalletId, 40, mkTx(kWalletId, 'debt_out', 40, title: 'Lent to Ali'));
+    await n.lendDebt(kWalletId, 40, mkTx(kWalletId, 'debt_out', 40, title: 'Lent to Ali'),
+        person: 'Ali', due: DateTime(2027, 1, 20));
+    await n.lendDebt(kWalletId, 10, mkTx(kWalletId, 'debt_out', 10, title: 'Lent to Sara'),
+        person: 'Sara');
+    final sara = (await e.db.getOpenDebts()).firstWhere((d) => d.person == 'Sara');
+    await n.repayDebt(kWalletId, 4, mkTx(kWalletId, 'debt_repaid', 4, title: 'Sara paid back'),
+        debtId: sara.id);
     await n.transfer(
       fromId: kWalletId,
       toId: trip.id,
@@ -59,18 +65,32 @@ void main() {
       txIn: mkTx(temp.id, 'transfer_in', 5, title: 'From wallet', related: kWalletId),
     );
     await n.deleteCustomAccount(temp.id, transferToWallet: true);
-    await e.db.insertBill('Rent', 250, 'Housing');
+    await e.db.insertBill('Rent', 250, 'Housing', dueDay: 5, autoPay: true);
     final net = await e.db.insertBill('Internet', 20.5, '');
     await e.db.markBillPaid(net);
+    await n.withdraw(kWalletId, 12.5,
+        mkTx(kWalletId, 'withdraw', 12.5, title: 'Lunch', category: 'Food'));
+    await e.db.setCategoryBudget('Food', 80);
+    await e.db.setCategoryBudget('Transport', 30.5);
+    await e.db.insertSavingsGoal('Laptop', 800, saved: 60.5, targetDate: DateTime(2027, 3, 15));
+    await e.db.insertSavingsGoal('Trip', 250.5);
     return e;
   }
 
-  /// Raw stored rows of the four data tables - what a faithful restore must reproduce.
+  /// Raw stored rows of the data tables - what a faithful restore must reproduce.
   Future<String> dump(AppDatabase db) async {
     final raw = await db.database;
     return jsonEncode({
-      for (final t in ['user', 'accounts', 'transactions', 'bills'])
-        t: await raw.query(t, orderBy: 'id ASC'),
+      for (final (t, order) in [
+        ('user', 'id'),
+        ('accounts', 'id'),
+        ('transactions', 'id'),
+        ('bills', 'id'),
+        ('category_budgets', 'category'),
+        ('savings_goals', 'id'),
+        ('debts', 'id'),
+      ])
+        t: await raw.query(t, orderBy: '$order ASC'),
     });
   }
 
@@ -78,11 +98,13 @@ void main() {
       target.restoreBackup(AppDatabase.parseBackup(json));
 
   group('export', () {
-    test('is JSON with the app marker, a version and the four tables', () async {
+    test('is JSON with the app marker, a version and the data tables', () async {
       final e = await populated();
       final m = jsonDecode(await e.db.exportBackup()) as Map<String, dynamic>;
-      expect(m.keys.toSet(),
-          {'app', 'version', 'exportedAt', 'user', 'accounts', 'transactions', 'bills'});
+      expect(m.keys.toSet(), {
+        'app', 'version', 'exportedAt', 'user', 'accounts', 'transactions', 'bills',
+        'category_budgets', 'savings_goals', 'debts',
+      });
       expect((m['app'], m['version']), ('financeapp', 1));
       expect(DateTime.parse(m['exportedAt'] as String).difference(DateTime.now()).inSeconds.abs(),
           lessThan(60));
@@ -138,7 +160,14 @@ void main() {
       final trip = accounts.values.firstWhere((a) => a.displayName == 'Trip Fund');
       expect((trip.type, trip.colorIndex, trip.iconCode, trip.balance),
           (AccountType.custom, 3, 57424, 105.0));
-      expect(accounts[kWalletId]!.loanedAmount, 40);
+      expect(accounts[kWalletId]!.loanedAmount, 46);
+      expect(
+          (await dst.db.getOpenDebts())
+              .map((d) => (d.person, d.amount, d.repaid, d.dueDate, d.accountId)),
+          [
+            ('Ali', 40.0, 0.0, DateTime(2027, 1, 20), kWalletId),
+            ('Sara', 10.0, 4.0, null, kWalletId),
+          ]);
 
       final txs = await dst.db.getAllTransactions();
       expect(txs.map((t) => t.note), contains('first, "quoted" ✓ نص'));
@@ -147,8 +176,83 @@ void main() {
       expect(txs.where((t) => t.title == 'To temp'), hasLength(1));
 
       final bills = await dst.db.getBills();
-      expect(bills.map((b) => (b.name, b.amount, b.category, b.isPaid)),
-          [('Rent', 250.0, 'Housing', false), ('Internet', 20.5, '', true)]);
+      expect(bills.map((b) => (b.name, b.amount, b.category, b.isPaid, b.dueDay)),
+          [('Rent', 250.0, 'Housing', false, 5), ('Internet', 20.5, '', true, null)]);
+    });
+
+    test('keeps transaction categories and replaces the category limits', () async {
+      final src = await populated();
+      final dst = await env();
+      await dst.db.setCategoryBudget('Health', 5);
+
+      await restore(dst.db, await src.db.exportBackup());
+
+      final lunch = (await dst.db.getAllTransactions()).firstWhere((t) => t.title == 'Lunch');
+      expect(lunch.category, 'Food');
+      expect(await dst.db.getCategoryBudgets(), {'Food': 80.0, 'Transport': 30.5});
+    });
+
+    test('keeps savings goals (with and without a date) and replaces the old ones', () async {
+      final src = await populated();
+      final dst = await env();
+      await dst.db.insertSavingsGoal('Old', 5);
+
+      await restore(dst.db, await src.db.exportBackup());
+
+      final goals = await dst.db.getSavingsGoals();
+      expect(goals.map((g) => (g.name, g.target, g.saved, g.targetDate)), [
+        ('Laptop', 800.0, 60.5, DateTime(2027, 3, 15)),
+        ('Trip', 250.5, 0.0, null),
+      ]);
+      expect(await dst.db.insertSavingsGoal('Next', 1), greaterThan(goals.last.id));
+    });
+
+    test('a backup from before debts had people keeps the lent money as "Earlier debts"',
+        () async {
+      final src = await populated();
+      final dst = await env();
+      await dst.c.read(accountsProvider.notifier).lendDebt(
+          kSavingsId, 5, mkTx(kSavingsId, 'debt_out', 5), person: 'Old');
+      final m = jsonDecode(await src.db.exportBackup()) as Map<String, dynamic>
+        ..remove('debts');
+
+      await restore(dst.db, jsonEncode(m));
+
+      expect((await dst.db.getOpenDebts()).map((d) => (d.person, d.amount, d.accountId)),
+          [('Earlier debts', 46.0, kWalletId)]);
+      await expectDebtsMatchAccounts(dst.db);
+    });
+
+    test('a backup from before goals held money restores them with nothing set aside', () async {
+      final src = await populated();
+      final dst = await env();
+      final m = jsonDecode(await src.db.exportBackup()) as Map<String, dynamic>;
+      for (final g in m['savings_goals'] as List) {
+        (g as Map).remove('saved');
+      }
+
+      await restore(dst.db, jsonEncode(m));
+
+      expect((await dst.db.getSavingsGoals()).map((g) => (g.name, g.saved)),
+          [('Laptop', 0.0), ('Trip', 0.0)]);
+    });
+
+    test('keeps the salary day; a backup without one (or with a bad one) means day 1', () async {
+      final src = await populated();
+      await src.db.updateUser(kTestUser.copyWith(salaryDay: 27));
+      final json = await src.db.exportBackup();
+
+      final dst = await env();
+      await restore(dst.db, json);
+      expect((await dst.db.getUser())!.salaryDay, 27);
+
+      for (final value in <Object?>[null, 0, 32, 'x', 2.5]) {
+        final m = jsonDecode(json) as Map<String, dynamic>;
+        final user = (m['user'] as List).single as Map;
+        value == null ? user.remove('salary_day') : user['salary_day'] = value;
+        await restore(dst.db, jsonEncode(m));
+        expect((await dst.db.getUser())!.salaryDay, 1, reason: 'salary_day: $value');
+      }
     });
 
     test('keeps timestamps', () async {
@@ -215,6 +319,9 @@ void main() {
         accounts: good.accounts,
         transactions: good.transactions,
         bills: [...good.bills, ...good.bills],
+        categoryBudgets: good.categoryBudgets,
+        savingsGoals: good.savingsGoals,
+        debts: good.debts,
       );
       await expectLater(dst.db.restoreBackup(broken), throwsA(anything));
 
@@ -308,6 +415,41 @@ void main() {
       'no bills': (m) => m.remove('bills'),
       'bill without a name': (m) => (m['bills'] as List).first['name'] = null,
       'bill amount as text': (m) => (m['bills'] as List).first['amount'] = 'x',
+      'bill due day as text': (m) => (m['bills'] as List).first['due_day'] = 'fifth',
+      'category limits that are not a list': (m) => m['category_budgets'] = 'x',
+      'category limit as text': (m) =>
+          (m['category_budgets'] as List).first['amount'] = 'lots',
+      'category limit of zero': (m) =>
+          (m['category_budgets'] as List).first['amount'] = 0,
+      'negative category limit': (m) =>
+          (m['category_budgets'] as List).first['amount'] = -5,
+      'category limit without a name': (m) =>
+          (m['category_budgets'] as List).first.remove('category'),
+      'goals that are not a list': (m) => m['savings_goals'] = 'x',
+      'goal target as text': (m) =>
+          (m['savings_goals'] as List).first['target'] = 'lots',
+      'goal target of zero': (m) => (m['savings_goals'] as List).first['target'] = 0,
+      'negative goal target': (m) => (m['savings_goals'] as List).first['target'] = -1,
+      'goal without a name': (m) => (m['savings_goals'] as List).first['name'] = '  ',
+      'goal saved as text': (m) => (m['savings_goals'] as List).first['saved'] = 'some',
+      'negative goal saved': (m) => (m['savings_goals'] as List).first['saved'] = -1,
+      'goal saved above its target': (m) =>
+          (m['savings_goals'] as List).first['saved'] = 800.5,
+      'goal date as text': (m) =>
+          (m['savings_goals'] as List).first['target_date'] = 'soon',
+      'debts that are not a list': (m) => m['debts'] = 'x',
+      'debt of an unknown account': (m) =>
+          (m['debts'] as List).first['account_id'] = 777,
+      'debt without a person': (m) => (m['debts'] as List).first['person'] = '  ',
+      'debt amount as text': (m) => (m['debts'] as List).first['amount'] = 'lots',
+      'debt amount of zero': (m) => (m['debts'] as List).first['amount'] = 0,
+      'negative debt repaid': (m) => (m['debts'] as List).first['repaid'] = -1,
+      'debt repaid above its amount': (m) => (m['debts'] as List).first['repaid'] = 41,
+      'debt date as text': (m) => (m['debts'] as List).first['due_date'] = 'soon',
+      'debt without a created date': (m) =>
+          (m['debts'] as List).first.remove('created_at'),
+      'debts that do not add up to the lent amount': (m) =>
+          (m['debts'] as List).first['amount'] = 41,
     };
     for (final e in breakers.entries) {
       test(e.key, () {
@@ -347,11 +489,73 @@ void main() {
       final b = AppDatabase.parseBackup(jsonEncode(m));
       expect(b.user['currency'], 'JOD');
       expect(b.accounts.every((a) => a['loaned_amount'] == 0.0), isTrue);
-      expect(b.bills.single, {'id': 1, 'name': 'Rent', 'amount': 5.0, 'is_paid': 0, 'category': ''});
+      expect(b.bills.single, {
+        'id': 1, 'name': 'Rent', 'amount': 5.0, 'is_paid': 0, 'category': '', 'due_day': null,
+        'auto_pay': 0,
+      });
       expect(b.exportedAt, isNull);
 
       await restore(e.db, jsonEncode(m));
       expect((await e.db.getBills()).single.name, 'Rent');
+    });
+
+    test('a backup made before categories existed: no limits, uncategorised transactions',
+        () async {
+      final src = await populated();
+      final dst = await env();
+      await dst.db.setCategoryBudget('Health', 5);
+      final m = jsonDecode(await src.db.exportBackup()) as Map<String, dynamic>
+        ..remove('category_budgets');
+      for (final t in m['transactions'] as List) {
+        t.remove('category');
+      }
+
+      await restore(dst.db, jsonEncode(m));
+
+      expect(await dst.db.getCategoryBudgets(), isEmpty);
+      expect((await dst.db.getAllTransactions()).every((t) => t.category == ''), isTrue);
+    });
+
+    test('a due day outside 1-31 is dropped, not restored', () async {
+      final e = await env();
+      final m = jsonDecode(await e.db.exportBackup()) as Map<String, dynamic>;
+      m['bills'] = [
+        {'id': 1, 'name': 'A', 'amount': 1, 'is_paid': 0, 'due_day': 40},
+        {'id': 2, 'name': 'B', 'amount': 1, 'is_paid': 0, 'due_day': 12},
+      ];
+      await restore(e.db, jsonEncode(m));
+      expect((await e.db.getBills()).map((b) => b.dueDay), [null, 12]);
+    });
+
+    test('auto-pay survives a restore; an old backup (no flag) or one without a due day has it off',
+        () async {
+      final src = await populated();
+      final e = await env();
+      await restore(e.db, await src.db.exportBackup());
+      expect((await e.db.getBills()).map((b) => (b.name, b.autoPay)),
+          [('Rent', true), ('Internet', false)]);
+
+      final m = jsonDecode(await src.db.exportBackup()) as Map<String, dynamic>;
+      m['bills'] = [
+        {'id': 1, 'name': 'Old', 'amount': 1, 'is_paid': 0, 'due_day': 12}, // made before auto-pay
+        {'id': 2, 'name': 'NoDay', 'amount': 1, 'is_paid': 0, 'auto_pay': 1},
+        {'id': 3, 'name': 'BadDay', 'amount': 1, 'is_paid': 0, 'due_day': 40, 'auto_pay': 1},
+        {'id': 4, 'name': 'On', 'amount': 1, 'is_paid': 0, 'due_day': 12, 'auto_pay': 1},
+      ];
+      await restore(e.db, jsonEncode(m));
+      expect((await e.db.getBills()).map((b) => b.autoPay), [false, false, false, true]);
+    });
+
+    test('a backup made before savings goals existed leaves the profile with none', () async {
+      final src = await populated();
+      final dst = await env();
+      await dst.db.insertSavingsGoal('Old', 5);
+      final m = jsonDecode(await src.db.exportBackup()) as Map<String, dynamic>
+        ..remove('savings_goals');
+
+      await restore(dst.db, jsonEncode(m));
+
+      expect(await dst.db.getSavingsGoals(), isEmpty);
     });
 
     test('an empty profile (no transactions, no bills)', () async {

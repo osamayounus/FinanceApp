@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 class SlidableExpenseCard extends StatefulWidget {
   final ExpenseModel item;
   final String currency;
+  final ({String text, bool late})? due;
   final void Function(VoidCallback closeFn)? onOpened;
   final VoidCallback? onClosed;
   final VoidCallback? onEdit;
@@ -25,6 +26,7 @@ class SlidableExpenseCard extends StatefulWidget {
     super.key,
     required this.item,
     required this.currency,
+    this.due,
     this.onOpened,
     this.onClosed,
     this.onEdit,
@@ -164,6 +166,7 @@ class _SlidableExpenseCardState extends State<SlidableExpenseCard>
                   child: ExpenseCard(
                     item: widget.item,
                     currency: widget.currency,
+                    due: widget.due,
                     onTap: displayOffset == 0 ? widget.onTap : _close,
                     onCheckTap:
                         displayOffset == 0 ? widget.onCheckTap : null,
@@ -212,6 +215,9 @@ class ActionLabel extends StatelessWidget {
 class ExpenseCard extends StatelessWidget {
   final ExpenseModel item;
   final String currency;
+
+  /// Due-date line shown after the category (null = nothing to say).
+  final ({String text, bool late})? due;
   final VoidCallback? onTap;
   final VoidCallback? onCheckTap;
 
@@ -219,6 +225,7 @@ class ExpenseCard extends StatelessWidget {
     super.key,
     required this.item,
     required this.currency,
+    this.due,
     this.onTap,
     this.onCheckTap,
   });
@@ -294,8 +301,23 @@ class ExpenseCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        cat.name,
+                      Text.rich(
+                        TextSpan(
+                          text: cat.name,
+                          children: [
+                            if (due != null)
+                              TextSpan(
+                                text: ' · ${due!.text}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: due!.late
+                                      ? Colors.redAccent
+                                      : Colors.white.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            if (item.autoPay && !paid) const TextSpan(text: ' · Auto-pay'),
+                          ],
+                        ),
                         style: TextStyle(
                           fontFamily: 'Rubik',
                           fontSize: AppSizes.fontXS,
